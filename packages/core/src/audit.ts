@@ -18,6 +18,12 @@ export const AUDIT_ACTIONS = [
   "document.downloaded",
   "document.deleted",
   "user.invited",
+  "user.updated",
+  "practice.updated",
+  "mail_account.created",
+  "mail_account.updated",
+  "mail_account.deleted",
+  "mail_account.tested",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

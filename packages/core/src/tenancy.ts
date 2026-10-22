@@ -62,6 +62,7 @@ export const MODEL_OWNERSHIP: Record<string, Ownership> = {
   InvoiceLine: "client",
   Document: "client-optional",
   AuditLog: "audit",
+  MailAccount: "practice",
 };
 
 const READ_OPS = new Set([

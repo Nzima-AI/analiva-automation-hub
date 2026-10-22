@@ -87,6 +87,24 @@ enum DocumentSource {
   API
 }
 
+enum MailProvider {
+  IMAP_SMTP
+  MICROSOFT_365
+  GMAIL
+}
+
+enum MailPurpose {
+  INBOUND
+  OUTBOUND
+  BOTH
+}
+
+enum ConnectionStatus {
+  UNTESTED
+  OK
+  ERROR
+}
+
 enum ActorType {
   USER
   SYSTEM
@@ -97,10 +115,13 @@ model Practice {
   id        String   @id @default(cuid())
   name      String
   slug      String   @unique
-  vatNumber String?
-  email     String?
-  phone     String?
-  timezone  String   @default("Africa/Johannesburg")
+  vatNumber          String?
+  registrationNumber String?
+  email              String?
+  phone              String?
+  website            String?
+  physicalAddress    String?
+  timezone           String   @default("Africa/Johannesburg")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -115,6 +136,7 @@ model Practice {
   lines       InvoiceLine[]
   documents   Document[]
   auditLogs   AuditLog[]
+  mailAccounts MailAccount[]
 }
 
 model User {
@@ -392,4 +414,37 @@ model AuditLog {
   @@index([practiceId, createdAt])
   @@index([practiceId, entityType, entityId])
   @@index([clientId, createdAt])
+}
+
+/// A mailbox the practice connects: watched for inbound mail (Phase 2) and/or used to
+/// send (Phase 3). The password is AES-256-GCM encrypted with SECRETS_KEY and never
+/// returned to the browser.
+model MailAccount {
+  id               String           @id @default(cuid())
+  practiceId       String
+  label            String
+  emailAddress     String
+  displayName      String?
+  provider         MailProvider     @default(IMAP_SMTP)
+  purpose          MailPurpose      @default(BOTH)
+  username         String
+  secretEncrypted  String?
+  imapHost         String?
+  imapPort         Int?             @default(993)
+  imapSecure       Boolean          @default(true)
+  imapFolder       String           @default("INBOX")
+  smtpHost         String?
+  smtpPort         Int?             @default(465)
+  smtpSecure       Boolean          @default(true)
+  isDefaultSender  Boolean          @default(false)
+  enabled          Boolean          @default(true)
+  status           ConnectionStatus @default(UNTESTED)
+  lastTestedAt     DateTime?
+  lastError        String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+
+  @@unique([practiceId, emailAddress])
 }

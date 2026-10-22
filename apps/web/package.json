@@ -15,7 +15,9 @@
     "@aah/db": "workspace:*",
     "@supabase/ssr": "0.12.7",
     "@supabase/supabase-js": "2.118.0",
+    "imapflow": "1.1.1",
     "next": "16.4.2",
+    "nodemailer": "7.0.10",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "server-only": "0.0.1",
@@ -24,6 +26,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "22.19.1",
+    "@types/nodemailer": "7.0.3",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
     "tailwindcss": "4.3.3",

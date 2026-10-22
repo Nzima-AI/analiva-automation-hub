@@ -43,7 +43,6 @@ export async function inviteUser(_prev: InviteState, formData: FormData): Promis
   const { data, error } = await supabaseAdmin().auth.admin.generateLink({
     type: "invite",
     email: input.email,
-    options: { redirectTo: `${await appUrl()}/auth/callback?next=/account/password` },
   });
   if (error || !data.user) {
     console.error("invite failed", { reason: error?.message });
@@ -62,7 +61,10 @@ export async function inviteUser(_prev: InviteState, formData: FormData): Promis
   });
   await audit(session.ctx, { action: "user.invited", entityType: "User", entityId: user.id, clientId, metadata: { role: input.role } }, session.user.name);
   revalidatePath("/team");
-  return { status: "ok", email: input.email, link: data.properties.action_link };
+  // Our own callback verifies the hashed token server-side (Supabase's action_link would
+  // return the session in a URL fragment the server cannot read).
+  const link = `${await appUrl()}/auth/callback?token_hash=${data.properties.hashed_token}&type=invite&next=/account/password`;
+  return { status: "ok", email: input.email, link };
 }
 
 export async function setUserDisabled(userId: string, disabled: boolean): Promise<void> {

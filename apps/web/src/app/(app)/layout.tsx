@@ -16,6 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         { href: "/documents", label: "Documents" },
         { href: "/audit", label: "Activity log" },
         ...(ctx.role === "OWNER" ? [{ href: "/team", label: "Team" }] : []),
+        { href: "/settings", label: "Settings" },
       ]
     : [{ href: `/clients/${ctx.clientId}`, label: "My business" }];
 

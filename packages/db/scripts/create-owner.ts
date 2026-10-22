@@ -14,6 +14,7 @@ import { createClient } from "@supabase/supabase-js";
 config({ path: path.resolve(process.cwd(), "../../.env"), quiet: true });
 
 const { values } = parseArgs({
+  args: process.argv.slice(2).filter((a) => a !== "--"),
   options: {
     practice: { type: "string" },
     slug: { type: "string" },
@@ -39,16 +40,21 @@ const p = await db.practice.upsert({ where: { slug }, create: { name: practice, 
 console.log(`Practice: ${p.name} (${p.id})`);
 
 const existing = await db.user.findUnique({ where: { practiceId_email: { practiceId: p.id, email: email.toLowerCase() } } });
+// Link straight to our callback with the hashed token (verifyOtp), so it works server-side.
+const linkFor = (type: "invite" | "recovery", hashedToken: string) =>
+  `${appUrl}/auth/callback?token_hash=${hashedToken}&type=${type}&next=/account/password`;
+
 if (existing) {
-  console.log(`Owner already exists: ${existing.email}. Use "Forgot password" on the login page to reset.`);
+  const { data, error } = await supabase.auth.admin.generateLink({ type: "recovery", email: existing.email });
+  if (error) throw error;
+  console.log(`Owner already exists: ${existing.email}`);
+  console.log(`Fresh one-time link to set a password (valid 24h):
+${linkFor("recovery", data.properties.hashed_token)}`);
+  await db.$disconnect();
   process.exit(0);
 }
 
-const { data, error } = await supabase.auth.admin.generateLink({
-  type: "invite",
-  email: email.toLowerCase(),
-  options: { redirectTo: `${appUrl}/auth/callback?next=/account/password` },
-});
+const { data, error } = await supabase.auth.admin.generateLink({ type: "invite", email: email.toLowerCase() });
 if (error || !data.user) throw error ?? new Error("invite failed");
 
 const owner = await db.user.create({
@@ -59,5 +65,5 @@ await db.auditLog.create({
 });
 
 console.log(`Owner created: ${owner.email}`);
-console.log(`One-time link (open it to set a password, valid 24h):\n${data.properties.action_link}`);
+console.log(`One-time link (open it to set a password, valid 24h):\n${linkFor("invite", data.properties.hashed_token)}`);
 await db.$disconnect();

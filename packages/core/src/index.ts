@@ -12,3 +12,4 @@ export type ServiceType = (typeof SERVICES)[number];
 export const INVOICE_RETENTION_YEARS = 5;
 
 export const DISPLAY_TIMEZONE = "Africa/Johannesburg";
+export * from "./mail-presets";

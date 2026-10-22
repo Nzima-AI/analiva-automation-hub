@@ -17,3 +17,8 @@ export function serverEnv() {
     requireMfa: process.env.REQUIRE_MFA !== "false",
   };
 }
+
+/** 32-byte base64 key for encrypting stored credentials (mailbox passwords). */
+export function secretsKey(): string {
+  return required("SECRETS_KEY", process.env.SECRETS_KEY);
+}
