@@ -10,7 +10,7 @@ CLAUDE.md §3 proposes Postgres + Prisma, Auth.js, S3, Redis/BullMQ and Vercel o
 
 | Area | Choice |
 | --- | --- |
-| Database | Supabase Postgres (eu-central-1), Prisma 7 with the `pg` driver adapter (no Rust engine binary on Vercel) |
+| Database | Supabase Postgres (eu-west-1, Ireland; project ref lwelafxhrxrchyoljswc), Prisma 7 with the `pg` driver adapter (no Rust engine binary on Vercel) |
 | Auth | Supabase Auth: email + password, TOTP two-step login enforced for every role (`REQUIRE_MFA`) |
 | Roles | Our own `User` table (OWNER, STAFF, CLIENT, CLIENT_STAFF) linked by `authUserId` |
 | File storage | Supabase Storage, private `documents` bucket; browser uploads via one-time signed URLs, downloads via 60-second signed URLs |
@@ -21,5 +21,5 @@ CLAUDE.md §3 proposes Postgres + Prisma, Auth.js, S3, Redis/BullMQ and Vercel o
 ## Consequences
 
 - Supabase exposes every table over its REST API. All tables have RLS on with no policies so the anon/authenticated keys can read nothing; the app connects as the table owner. See 0002.
-- Data is stored in Frankfurt (no South African Supabase region). Record this in the POPIA register as a cross-border transfer to a country with adequate protection (GDPR).
+- Data is stored in Ireland (no South African Supabase region). Record this in the POPIA register as a cross-border transfer to a country with adequate protection (GDPR).
 - Vercel request bodies are capped at 4.5 MB, which is why uploads go browser → Storage directly.

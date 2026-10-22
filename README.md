@@ -45,3 +45,9 @@ Optional demo data (fake businesses) into a separate "demo" practice: `pnpm db:s
 ## Deploying
 
 Vercel project root directory is `apps/web`; it installs from the repo root. Required env vars are listed in `.env.example`. Migrations are applied from a developer machine or CI with `pnpm db:migrate`, never during the Vercel build.
+
+## Live
+
+- App: https://analiva-automation-hub.vercel.app (Vercel team `ndumiso1`, project `analiva-automation-hub`, root `apps/web`)
+- Database/Auth/Storage: Supabase project `lwelafxhrxrchyoljswc` (eu-west-1)
+- Deploy from a git-less copy (`vercel deploy --prod`), see ADR 0001. A "demo" practice holds fake seed data for testing.
