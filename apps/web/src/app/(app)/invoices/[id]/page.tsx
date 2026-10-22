@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { InvoiceStatusBadge } from "@/components/status";
-import { Button, Card, Input, Notice, PageHeader } from "@/components/ui";
+import { Badge, Button, Card, Input, Notice, PageHeader, Select } from "@/components/ui";
+import { ACCOUNT_TYPE_INFO, type AccountType } from "@aah/core";
 import { formatCalendarDate, formatCents, formatDateTime, humanise } from "@/lib/format";
 import { requireStaff } from "@/lib/session";
-import { deleteInvoice, setInvoiceStatus } from "../actions";
+import { deleteInvoice, recodeInvoiceAction, setInvoiceStatus } from "../actions";
 
 export const metadata = { title: "Invoice" };
 
@@ -16,6 +17,7 @@ const ISSUE_TEXT: Record<string, string> = {
   VAT_WITHOUT_VAT_NUMBER: "VAT was charged but there is no supplier VAT number.",
   NEGATIVE_TOTAL: "Total is negative.",
   SUSPECTED_DUPLICATE: "An invoice with this number from this supplier is already on record.",
+  UNUSUAL_AMOUNT: "Far outside this supplier's usual amount (more than 3× or less than a third of the average).",
 };
 
 export default async function InvoicePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
@@ -33,6 +35,12 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
     },
   });
   if (!invoice) notFound();
+  const ledgerAccounts = await db.ledgerAccount.findMany({
+    where: { clientId: invoice.clientId, isActive: true, type: { in: invoice.direction === "PAYABLE" ? ["EXPENSE", "COST_OF_SALES", "FIXED_ASSET", "CURRENT_ASSET"] : ["SALES", "OTHER_INCOME"] } },
+    orderBy: { code: "asc" },
+    select: { code: true, name: true, type: true },
+  });
+  const outstanding = invoice.totalCents - invoice.amountPaidCents;
   const history = await db.auditLog.findMany({
     where: { entityType: "Invoice", entityId: invoice.id },
     orderBy: { createdAt: "desc" },
@@ -95,6 +103,46 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
             ) : (
               <p className="text-sm text-muted">No original linked.</p>
             )}
+          </Card>
+
+          <Card title="Books">
+            <p className="mb-3 flex items-center gap-2 text-sm">
+              {invoice.journalEntryId ? <Badge tone="positive" dot>Posted to the ledger</Badge> : <Badge tone="warn" dot>Not in the books</Badge>}
+            </p>
+            <form action={recodeInvoiceAction.bind(null, invoice.id)} className="space-y-2">
+              <Select name="accountCode" defaultValue={invoice.accountCode ?? ""} aria-label="Account">
+                <option value="" disabled>
+                  Choose account…
+                </option>
+                {(Object.keys(ACCOUNT_TYPE_INFO) as AccountType[])
+                  .filter((t) => ledgerAccounts.some((a) => a.type === t))
+                  .map((t) => (
+                    <optgroup key={t} label={ACCOUNT_TYPE_INFO[t].label}>
+                      {ledgerAccounts
+                        .filter((a) => a.type === t)
+                        .map((a) => (
+                          <option key={a.code} value={a.code}>
+                            {a.code} · {a.name}
+                          </option>
+                        ))}
+                    </optgroup>
+                  ))}
+              </Select>
+              <Button variant="secondary" size="sm" className="w-full">
+                Re-code
+              </Button>
+            </form>
+            <dl className="mt-4 space-y-1 border-t border-line pt-3 text-sm">
+              <div className="flex justify-between">
+                <dt className="text-muted">Paid</dt>
+                <dd className="tabular">{formatCents(invoice.amountPaidCents, invoice.currency)}</dd>
+              </div>
+              <div className="flex justify-between font-medium">
+                <dt>Outstanding</dt>
+                <dd className={`tabular ${outstanding > 0n ? "text-warn" : "text-positive"}`}>{formatCents(outstanding, invoice.currency)}</dd>
+              </div>
+            </dl>
+            <p className="mt-2 text-xs text-faint">Payments are matched from imported bank statements.</p>
           </Card>
 
           {invoice.status !== "POSTED" ? (

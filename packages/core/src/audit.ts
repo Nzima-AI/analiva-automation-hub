@@ -29,6 +29,16 @@ export const AUDIT_ACTIONS = [
   "capture.filed",
   "capture.dismissed",
   "invoice.exported",
+  "client.settings_updated",
+  "journal.posted",
+  "journal.reversed",
+  "bank.imported",
+  "bank.coded",
+  "bank.matched",
+  "bank_rule.created",
+  "ledger_account.created",
+  "compliance.filed",
+  "books.exported",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

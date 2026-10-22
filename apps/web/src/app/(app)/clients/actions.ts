@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { normaliseCipcRegistration, normaliseSaPhone, SERVICES, isValidSaVatNumber } from "@aah/core";
+import { normaliseCipcRegistration, normaliseSaPhone, parseDateRange, SERVICES, isValidSaVatNumber } from "@aah/core";
 import { audit, Prisma } from "@aah/db";
 import { blankToNull, fail, parseForm } from "@/lib/forms";
 import { requireStaff } from "@/lib/session";
@@ -21,6 +21,12 @@ const clientSchema = z.object({
   emailDomains: optional,
   status: z.enum(["PROSPECT", "ONBOARDING", "ACTIVE", "PAUSED", "ARCHIVED"]).default("ONBOARDING"),
   notes: z.preprocess(blankToNull, z.string().max(5000).nullable()),
+  isCompany: z.preprocess((v) => v === "on", z.boolean()),
+  vatRegistered: z.preprocess((v) => v === "on", z.boolean()),
+  vatCategory: z.preprocess(blankToNull, z.enum(["A", "B", "C"]).nullable()),
+  payeRegistered: z.preprocess((v) => v === "on", z.boolean()),
+  financialYearEndMonth: z.coerce.number().int().min(1).max(12).default(2),
+  incorporationDate: z.preprocess(blankToNull, z.string().nullable()),
 });
 
 type ClientInput = z.infer<typeof clientSchema>;
@@ -38,7 +44,17 @@ function normaliseClient(input: ClientInput, backTo: string) {
   const freeMail = ["gmail.com", "outlook.com", "hotmail.com", "yahoo.com", "icloud.com", "live.com", "webmail.co.za", "mweb.co.za", "telkomsa.net"];
   if (domainFromEmail && !freeMail.includes(domainFromEmail) && !domains.includes(domainFromEmail)) domains.push(domainFromEmail);
 
+  const incorporationDate = input.incorporationDate ? parseDateRange(input.incorporationDate)?.from ?? null : null;
+  if (input.incorporationDate && !incorporationDate) fail(backTo, "Incorporation date isn't a valid date.");
+  if (input.vatRegistered && !input.vatCategory) fail(backTo, "Choose the client's VAT category (A, B or C) for the VAT calendar.");
+
   return {
+    isCompany: input.isCompany,
+    vatRegistered: input.vatRegistered,
+    vatCategory: input.vatRegistered ? input.vatCategory : null,
+    payeRegistered: input.payeRegistered,
+    financialYearEndMonth: input.financialYearEndMonth,
+    incorporationDate,
     name: input.name,
     tradingName: input.tradingName,
     registrationNumber,
@@ -157,4 +173,35 @@ export async function deleteContact(clientId: string, contactId: string) {
     await audit(session.ctx, { action: "contact.deleted", entityType: "Contact", entityId: contactId, clientId }, session.user.name);
   }
   revalidatePath(`/clients/${clientId}`);
+}
+
+const captureSchema = z.object({
+  captureMode: z.enum(["ALWAYS_REVIEW", "AUTO_WHEN_CONFIDENT", "NEVER_REVIEW"]),
+  autoFileThreshold: z.coerce.number().int().min(60).max(99),
+});
+
+/** Owner-only: how much of this client's inbox capture skips review. */
+export async function updateCaptureSettings(clientId: string, formData: FormData) {
+  const session = await requireStaff();
+  if (session.ctx.role !== "OWNER") fail(`/clients/${clientId}`, "Only the practice owner can change review settings.");
+  const input = parseForm(captureSchema, formData, `/clients/${clientId}`);
+  const { count } = await session.db.client.updateMany({
+    where: { id: clientId, deletedAt: null },
+    data: { captureMode: input.captureMode, autoFileThreshold: input.autoFileThreshold / 100 },
+  });
+  if (count === 0) fail("/clients", "Client not found.");
+  await audit(
+    session.ctx,
+    {
+      action: "client.settings_updated",
+      entityType: "Client",
+      entityId: clientId,
+      clientId,
+      metadata: { captureMode: input.captureMode, threshold: input.autoFileThreshold },
+    },
+    session.user.name,
+  );
+  revalidatePath(`/clients/${clientId}`);
+  revalidatePath("/clients");
+  redirect(`/clients/${clientId}?saved=capture`);
 }

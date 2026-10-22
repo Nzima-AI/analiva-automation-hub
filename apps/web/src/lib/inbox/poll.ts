@@ -8,6 +8,7 @@ import {
   isDocumentAttachment,
   matchClient,
   parseInvoiceText,
+  vatFromInclusive,
   type TenantContext,
 } from "@aah/core";
 import { decryptSecret } from "@aah/core/secrets";
@@ -26,6 +27,12 @@ const MIN_IMAGE_BYTES = 8 * 1024; // smaller images are signature logos
 const FIRST_SYNC_LOOKBACK_DAYS = 3;
 const TIME_BUDGET_MS = 240_000;
 const SYSTEM_LABEL = "Inbox capture";
+
+interface CapturePolicy {
+  mode: "ALWAYS_REVIEW" | "AUTO_WHEN_CONFIDENT" | "NEVER_REVIEW";
+  threshold: number;
+  vatRegistered: boolean;
+}
 
 export interface PollSummary {
   account: string;
@@ -208,6 +215,9 @@ async function processMessage(
   );
   const clientId = match.status === "MATCHED" ? match.clientId : null;
   const matchedClient = clients.find((c) => c.id === clientId);
+  const policy: CapturePolicy = matchedClient
+    ? { mode: matchedClient.captureMode, threshold: matchedClient.autoFileThreshold, vatRegistered: matchedClient.vatRegistered }
+    : { mode: "ALWAYS_REVIEW", threshold: 1, vatRegistered: false };
 
   const rawPath = `${account.practiceId}/inbox/${year}/${randomUUID()}.eml`;
   const rawUpload = await storage.upload(rawPath, source, { contentType: "message/rfc822" });
@@ -282,6 +292,7 @@ async function processMessage(
       extraction: d.extraction,
       excludeVat: [practice?.vatNumber, matchedClient?.vatNumber].filter((v): v is string => !!v),
       matchStatus: match.status,
+      policy,
     });
     if (outcome === "FILED") filed++;
     else queued++;
@@ -316,6 +327,7 @@ async function captureDocument(
     extraction: ExtractionResult | null;
     excludeVat: string[];
     matchStatus: string;
+    policy: CapturePolicy;
   },
 ): Promise<"FILED" | "QUEUED"> {
   const base = { practiceId: ctx.practiceId, clientId: a.clientId, emailMessageId: a.emailId, documentId: a.documentId };
@@ -341,19 +353,31 @@ async function captureDocument(
   const extracted = toExtractedJson(parsed, a.extraction?.method ?? "unknown", a.extraction?.note ?? null);
   const gate = confidenceGate(parsed.confidence);
   const complete = !!(parsed.totalCents && parsed.invoiceNumber && parsed.issueDate && parsed.vatCents && parsed.subtotalCents);
+  // The basics needed to file at all. NEVER_REVIEW clients file with just these.
+  const basics = !!(parsed.totalCents && parsed.invoiceNumber && parsed.issueDate);
+  const autoFile =
+    !!a.clientId &&
+    !parsed.looksLikeCreditNote &&
+    (a.policy.mode === "NEVER_REVIEW"
+      ? basics
+      : a.policy.mode === "AUTO_WHEN_CONFIDENT" && complete && parsed.confidence >= a.policy.threshold);
 
-  if (a.clientId && gate === "AUTO" && complete && !parsed.looksLikeCreditNote) {
+  if (autoFile) {
+    // Fill missing amounts for NEVER_REVIEW: VAT only when the supplier showed a VAT number.
+    const total = parsed.totalCents!.value;
+    const vat = parsed.vatCents?.value ?? (parsed.subtotalCents ? total - parsed.subtotalCents.value : parsed.supplierVatNumber ? vatFromInclusive(total) : 0n);
+    const subtotal = parsed.subtotalCents?.value ?? total - vat;
     const input = {
-      clientId: a.clientId,
+      clientId: a.clientId!,
       direction: "PAYABLE" as const,
       supplierName: parsed.supplierName?.value ?? null,
       supplierVatNumber: parsed.supplierVatNumber?.value ?? null,
       invoiceNumber: parsed.invoiceNumber!.value,
       issueDate: parsed.issueDate!.value,
       dueDate: parsed.dueDate?.value ?? null,
-      subtotalCents: parsed.subtotalCents!.value,
-      vatCents: parsed.vatCents!.value,
-      totalCents: parsed.totalCents!.value,
+      subtotalCents: subtotal,
+      vatCents: vat,
+      totalCents: total,
       description: null,
       sourceDocumentId: a.documentId,
       captureSource: "EMAIL" as const,
@@ -361,7 +385,11 @@ async function captureDocument(
       capturedByUserId: null,
     };
     const check = await checkInvoice(db, ctx, input);
-    if (check.issues.length === 0) {
+    // NEVER_REVIEW files despite validation flags (they stay on the invoice), but a
+    // suspected duplicate would double-count in the books, so it always waits.
+    const canFile =
+      a.policy.mode === "NEVER_REVIEW" ? !check.issues.includes("SUSPECTED_DUPLICATE") : check.issues.length === 0;
+    if (canFile) {
       const invoice = await createInvoice(db, ctx, input, check);
       const capture = await db.capture.create({
         data: { ...base, status: "FILED", confidence: parsed.confidence, extracted: extracted as object, documentText: a.text.slice(0, 50_000), invoiceId: invoice.id, decidedAt: new Date() },
@@ -384,7 +412,10 @@ async function captureDocument(
           entityType: "Invoice",
           entityId: invoice.id,
           clientId: a.clientId,
-          reason: `Auto-filed from email at ${Math.round(parsed.confidence * 100)}% confidence`,
+          reason:
+            a.policy.mode === "NEVER_REVIEW"
+              ? `Auto-filed (client set to never review) at ${Math.round(parsed.confidence * 100)}% confidence`
+              : `Auto-filed from email at ${Math.round(parsed.confidence * 100)}% confidence`,
           metadata: { captureId: capture.id },
         },
         SYSTEM_LABEL,

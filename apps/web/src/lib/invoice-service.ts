@@ -7,6 +7,7 @@ import {
   type TenantContext,
 } from "@aah/core";
 import type { TenantDb } from "@aah/db";
+import { syncInvoiceJournal } from "@/lib/books/ledger";
 
 export interface InvoiceInput {
   clientId: string;
@@ -24,6 +25,8 @@ export interface InvoiceInput {
   captureSource: "MANUAL" | "EMAIL";
   confidence: number | null;
   capturedByUserId: string | null;
+  /** Ledger account code; when absent the supplier's learned account or a suggestion is used. */
+  accountCode?: string | null;
 }
 
 export type InvoiceCheck = { issues: string[]; supplierId: string | null; invoiceNumberNorm: string };
@@ -63,13 +66,27 @@ export async function checkInvoice(db: TenantDb, ctx: TenantContext, input: Invo
     select: { id: true },
   });
   if (duplicate) issues.push("SUSPECTED_DUPLICATE");
+
+  // Far outside this supplier's usual range (needs a few earlier bills to judge).
+  if (supplierId) {
+    const history = await db.invoice.aggregate({
+      where: { supplierId, deletedAt: null, status: { not: "REJECTED" } },
+      _avg: { totalCents: true },
+      _count: { _all: true },
+    });
+    const avg = history._avg.totalCents;
+    if (history._count._all >= 3 && avg && avg > 0) {
+      const ratio = Number(input.totalCents) / Number(avg);
+      if (ratio > 3 || ratio < 1 / 3) issues.push("UNUSUAL_AMOUNT");
+    }
+  }
   return { issues, supplierId, invoiceNumberNorm };
 }
 
 export async function createInvoice(db: TenantDb, ctx: TenantContext, input: InvoiceInput, check: InvoiceCheck) {
   const retainUntil = new Date(input.issueDate);
   retainUntil.setUTCFullYear(retainUntil.getUTCFullYear() + INVOICE_RETENTION_YEARS);
-  return db.invoice.create({
+  const invoice = await db.invoice.create({
     data: {
       practiceId: ctx.practiceId,
       clientId: input.clientId,
@@ -90,6 +107,15 @@ export async function createInvoice(db: TenantDb, ctx: TenantContext, input: Inv
       confidence: input.confidence,
       capturedByUserId: input.capturedByUserId,
       retainUntil,
+      accountCode: input.accountCode ?? null,
     },
   });
+  // Post to the client's books. A posting failure must not lose the captured invoice:
+  // it's logged and the invoice shows as "not in the books" until re-posted.
+  try {
+    await syncInvoiceJournal(db, ctx, invoice.id);
+  } catch (e) {
+    console.error("journal post failed", { invoiceId: invoice.id, reason: e instanceof Error ? e.message : String(e) });
+  }
+  return invoice;
 }

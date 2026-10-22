@@ -68,6 +68,13 @@ export const MODEL_OWNERSHIP: Record<string, Ownership> = {
   SenderRule: "practice",
   SupplierProfile: "practice",
   CaptureCorrection: "practice",
+  LedgerAccount: "client",
+  JournalEntry: "client",
+  JournalLine: "client",
+  BankAccount: "client",
+  BankTransaction: "client",
+  ComplianceFiling: "client",
+  BankRule: "practice",
 };
 
 const READ_OPS = new Set([

@@ -1,59 +1,69 @@
-import Link from "next/link";
 import { isPracticeRole } from "@aah/core";
-import { NavLink } from "@/components/nav-link";
+import { CommandBar } from "@/components/shell/command-bar";
+import { Sidebar, type NavSection } from "@/components/shell/sidebar";
 import { humanise } from "@/lib/format";
 import { requireSession } from "@/lib/session";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, practice, ctx, db } = await requireSession();
   const staff = isPracticeRole(ctx.role);
-  const waiting = staff ? await db.capture.count({ where: { status: { in: ["NEEDS_CLIENT", "SUGGESTED", "NEEDS_REVIEW", "FAILED"] } } }) : 0;
+  const [waiting, bankToCode] = staff
+    ? await Promise.all([
+        db.capture.count({ where: { status: { in: ["NEEDS_CLIENT", "SUGGESTED", "NEEDS_REVIEW", "FAILED"] } } }),
+        db.bankTransaction.count({ where: { status: "UNMATCHED" } }),
+      ])
+    : [0, 0];
 
-  const nav = staff
+  const sections: NavSection[] = staff
     ? [
-        { href: "/", label: "Lookup", exact: true },
-        { href: "/review", label: waiting ? `Review queue (${waiting})` : "Review queue" },
-        { href: "/inbox", label: "Inbox" },
-        { href: "/clients", label: "Clients" },
-        { href: "/invoices", label: "Invoices" },
-        { href: "/documents", label: "Documents" },
-        { href: "/audit", label: "Activity log" },
-        ...(ctx.role === "OWNER" ? [{ href: "/team", label: "Team" }] : []),
-        { href: "/settings", label: "Settings" },
+        {
+          title: "Work",
+          items: [
+            { href: "/", label: "Dashboard", icon: "dashboard", exact: true },
+            { href: "/review", label: "Review queue", icon: "review", badge: waiting },
+            { href: "/inbox", label: "Inbox", icon: "inbox" },
+            { href: "/compliance", label: "Deadlines", icon: "deadlines" },
+          ],
+        },
+        {
+          title: "Clients",
+          items: [
+            { href: "/clients", label: "Clients", icon: "clients" },
+            { href: "/lookup", label: "Lookup", icon: "lookup" },
+          ],
+        },
+        {
+          title: "Accounting",
+          items: [
+            { href: "/books", label: "Books & reports", icon: "books", badge: bankToCode },
+            { href: "/invoices", label: "Invoices", icon: "invoices" },
+            { href: "/documents", label: "Documents", icon: "documents" },
+          ],
+        },
+        {
+          title: "Practice",
+          items: [
+            { href: "/audit", label: "Activity log", icon: "activity" },
+            ...(ctx.role === "OWNER" ? [{ href: "/team", label: "Team", icon: "team" as const }] : []),
+            { href: "/settings", label: "Settings", icon: "settings" },
+          ],
+        },
       ]
-    : [{ href: `/clients/${ctx.clientId}`, label: "My business" }];
+    : [{ title: "My business", items: [{ href: `/clients/${ctx.clientId}`, label: "Overview", icon: "clients" }] }];
 
   return (
-    <div className="min-h-screen md:flex">
-      <aside className="border-b border-line bg-panel md:sticky md:top-0 md:flex md:h-screen md:w-60 md:shrink-0 md:flex-col md:border-r md:border-b-0">
-        <Link href="/" className="flex items-center gap-2.5 px-5 py-4">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-brand text-xs font-bold text-white">A</span>
-          <span className="text-sm font-semibold leading-tight">
-            Analiva
-            <br />
-            <span className="font-normal text-muted">Automation Hub</span>
-          </span>
-        </Link>
-        <nav className="flex gap-1 overflow-x-auto px-3 pb-3 md:flex-1 md:flex-col md:overflow-visible md:pb-0">
-          {nav.map((item) => (
-            <NavLink key={item.href} href={item.href} exact={item.exact}>
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="hidden border-t border-line px-5 py-4 md:block">
-          <p className="truncate text-sm font-medium">{user.name}</p>
-          <p className="truncate text-xs text-muted">
-            {humanise(user.role)} · {practice.name}
-          </p>
-          <form action="/auth/signout" method="post" className="mt-2">
-            <button className="text-xs text-muted hover:text-ink">Sign out</button>
-          </form>
-        </div>
-      </aside>
-      <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
-        <div className="mx-auto max-w-6xl">{children}</div>
-      </main>
+    <div className="app-backdrop min-h-screen md:flex">
+      <Sidebar sections={sections} user={{ name: user.name, role: humanise(user.role) }} practiceName={practice.name} />
+      <div className="min-w-0 flex-1">
+        {staff ? (
+          <div className="no-print sticky top-0 z-20 hidden items-center gap-4 border-b border-line bg-canvas/80 px-8 py-3 backdrop-blur md:flex">
+            <CommandBar />
+          </div>
+        ) : null}
+        <main className="fade-in px-4 py-6 md:px-8 md:py-8">
+          <div className="mx-auto max-w-7xl">{children}</div>
+        </main>
+      </div>
     </div>
   );
 }

@@ -123,6 +123,51 @@ enum ConnectionStatus {
   ERROR
 }
 
+enum CaptureMode {
+  /// Every invoice waits for a person
+  ALWAYS_REVIEW
+  /// File automatically at or above the client's confidence threshold
+  AUTO_WHEN_CONFIDENT
+  /// Never review: file everything once the client is known and the basics were read
+  NEVER_REVIEW
+}
+
+enum LedgerAccountType {
+  BANK
+  CURRENT_ASSET
+  FIXED_ASSET
+  CURRENT_LIABILITY
+  LONG_TERM_LIABILITY
+  EQUITY
+  SALES
+  OTHER_INCOME
+  COST_OF_SALES
+  EXPENSE
+  INCOME_TAX
+}
+
+enum JournalSource {
+  INVOICE
+  PAYMENT
+  BANK
+  MANUAL
+  OPENING
+  REVERSAL
+}
+
+enum BankTxnStatus {
+  UNMATCHED
+  CODED
+  MATCHED
+  IGNORED
+}
+
+enum RuleDirection {
+  IN
+  OUT
+  ANY
+}
+
 enum ActorType {
   USER
   SYSTEM
@@ -160,6 +205,13 @@ model Practice {
   senderRules  SenderRule[]
   supplierProfiles SupplierProfile[]
   corrections  CaptureCorrection[]
+  ledgerAccounts LedgerAccount[]
+  journals     JournalEntry[]
+  journalLines JournalLine[]
+  bankAccounts BankAccount[]
+  bankTransactions BankTransaction[]
+  bankRules    BankRule[]
+  filings      ComplianceFiling[]
 }
 
 model User {
@@ -204,6 +256,19 @@ model Client {
   emailDomains       String[]     @default([])
   status             ClientStatus @default(ONBOARDING)
   notes              String?
+  // Capture automation (owner-controlled)
+  captureMode        CaptureMode  @default(AUTO_WHEN_CONFIDENT)
+  /// 0..1; used with AUTO_WHEN_CONFIDENT
+  autoFileThreshold  Float        @default(0.9)
+  // Tax profile: drives VAT treatment and the compliance calendar
+  isCompany          Boolean      @default(true)
+  vatRegistered      Boolean      @default(false)
+  /// A, B or C (SARS VAT category)
+  vatCategory        String?
+  payeRegistered     Boolean      @default(false)
+  /// 1-12, month the financial year ends
+  financialYearEndMonth Int       @default(2)
+  incorporationDate  DateTime?    @db.Date
   deletedAt          DateTime?
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
@@ -221,6 +286,13 @@ model Client {
   emails    EmailMessage[]
   captures  Capture[]
   senderRules SenderRule[]
+  ledgerAccounts LedgerAccount[]
+  journals  JournalEntry[]
+  journalLines JournalLine[]
+  bankAccounts BankAccount[]
+  bankTransactions BankTransaction[]
+  bankRules BankRule[]
+  filings   ComplianceFiling[]
 
   @@unique([practiceId, code])
   @@index([practiceId, status])
@@ -313,6 +385,8 @@ model Supplier {
   vatNumber  String?
   email      String?
   phone      String?
+  /// Learned: the ledger account this supplier's bills go to
+  defaultAccountCode String?
   deletedAt  DateTime?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -342,6 +416,10 @@ model Invoice {
   totalCents            BigInt
   status                InvoiceStatus    @default(CAPTURED)
   description           String?
+  /// Ledger account the bill is expensed to (or sales account), by code
+  accountCode           String?
+  amountPaidCents       BigInt           @default(0)
+  journalEntryId        String?          @unique
   /// 0..1 extraction confidence; null for manual capture
   confidence            Float?
   /// Validation issue codes from @aah/core validateInvoiceTotals
@@ -364,6 +442,8 @@ model Invoice {
   capturedBy     User?         @relation("InvoiceCapturer", fields: [capturedByUserId], references: [id])
   lines          InvoiceLine[]
   capture        Capture?
+  journal        JournalEntry?     @relation("InvoiceJournal", fields: [journalEntryId], references: [id])
+  bankMatches    BankTransaction[]
 
   @@index([practiceId, invoiceNumberNorm])
   @@index([practiceId, totalCents])
@@ -601,4 +681,162 @@ model CaptureCorrection {
   capture  Capture  @relation(fields: [captureId], references: [id], onDelete: Cascade)
 
   @@index([practiceId, createdAt])
+}
+
+/// A client's chart of accounts.
+model LedgerAccount {
+  id         String            @id @default(cuid())
+  practiceId String
+  clientId   String
+  code       String
+  name       String
+  type       LedgerAccountType
+  /// Role the posting engine looks up (VAT_INPUT, CREDITORS, ...)
+  systemKey  String?
+  keywords   String[]          @default([])
+  isActive   Boolean           @default(true)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  practice     Practice      @relation(fields: [practiceId], references: [id])
+  client       Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  lines        JournalLine[]
+  bankAccounts BankAccount[]
+
+  @@unique([clientId, code])
+  @@index([clientId, systemKey])
+}
+
+/// A balanced double-entry journal. Never edited: corrections are reversals.
+model JournalEntry {
+  id             String        @id @default(cuid())
+  practiceId     String
+  clientId       String
+  date           DateTime      @db.Date
+  reference      String?
+  description    String
+  source         JournalSource
+  /// Invoice / bank transaction / journal this came from
+  sourceId       String?
+  reversesId     String?       @unique
+  postedByUserId String?
+  createdAt      DateTime      @default(now())
+
+  practice   Practice      @relation(fields: [practiceId], references: [id])
+  client     Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  lines      JournalLine[]
+  invoice    Invoice?      @relation("InvoiceJournal")
+  reverses   JournalEntry? @relation("Reversal", fields: [reversesId], references: [id])
+  reversedBy JournalEntry? @relation("Reversal")
+
+  @@index([clientId, date])
+  @@index([clientId, source, sourceId])
+}
+
+model JournalLine {
+  id          String   @id @default(cuid())
+  practiceId  String
+  clientId    String
+  entryId     String
+  accountId   String
+  /// Copied from the entry so reports can filter lines by date directly
+  date        DateTime @db.Date
+  debitCents  BigInt   @default(0)
+  creditCents BigInt   @default(0)
+  description String?
+
+  practice Practice      @relation(fields: [practiceId], references: [id])
+  client   Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  entry    JournalEntry  @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  account  LedgerAccount @relation(fields: [accountId], references: [id])
+
+  @@index([clientId, date])
+  @@index([accountId, date])
+}
+
+model BankAccount {
+  id              String   @id @default(cuid())
+  practiceId      String
+  clientId        String
+  name            String
+  bankName        String?
+  /// Last 4 digits only
+  accountLast4    String?
+  ledgerAccountId String
+  createdAt       DateTime @default(now())
+
+  practice      Practice          @relation(fields: [practiceId], references: [id])
+  client        Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  ledgerAccount LedgerAccount     @relation(fields: [ledgerAccountId], references: [id])
+  transactions  BankTransaction[]
+}
+
+model BankTransaction {
+  id             String        @id @default(cuid())
+  practiceId     String
+  clientId       String
+  bankAccountId  String
+  date           DateTime      @db.Date
+  description    String
+  /// Signed from the bank's view: positive = money in
+  amountCents    BigInt
+  balanceCents   BigInt?
+  fingerprint    String
+  status         BankTxnStatus @default(UNMATCHED)
+  /// Account it was coded to (CODED)
+  accountCode    String?
+  vatInclusive   Boolean       @default(false)
+  /// Invoice it settles (MATCHED)
+  invoiceId      String?
+  journalEntryId String?
+  ruleId         String?
+  matchReason    String?
+  importBatch    String?
+  createdAt      DateTime      @default(now())
+
+  practice    Practice    @relation(fields: [practiceId], references: [id])
+  client      Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  bankAccount BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  invoice     Invoice?    @relation(fields: [invoiceId], references: [id])
+  rule        BankRule?   @relation(fields: [ruleId], references: [id])
+
+  @@unique([bankAccountId, fingerprint])
+  @@index([clientId, status])
+  @@index([clientId, date])
+}
+
+/// "Lines containing X go to account Y". Client-specific, or practice-wide when clientId is null.
+model BankRule {
+  id           String        @id @default(cuid())
+  practiceId   String
+  clientId     String?
+  matchText    String
+  direction    RuleDirection @default(ANY)
+  accountCode  String
+  vatInclusive Boolean       @default(false)
+  timesApplied Int           @default(0)
+  createdAt    DateTime      @default(now())
+
+  practice     Practice          @relation(fields: [practiceId], references: [id])
+  client       Client?           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  transactions BankTransaction[]
+
+  @@index([practiceId, clientId])
+}
+
+/// A statutory return marked as done (deadlines themselves are calculated).
+model ComplianceFiling {
+  id                String   @id @default(cuid())
+  practiceId        String
+  clientId          String
+  /// e.g. VAT201:2026-08
+  periodKey         String
+  completedAt       DateTime @default(now())
+  completedByUserId String?
+  note              String?
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+  client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, periodKey])
 }

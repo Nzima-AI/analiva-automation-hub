@@ -6,6 +6,7 @@ import { z } from "zod";
 import { isValidSaVatNumber, parseAmountToCents, parseDateRange, vatFromInclusive } from "@aah/core";
 import { audit } from "@aah/db";
 import { blankToNull, fail, parseForm } from "@/lib/forms";
+import { recodeInvoice, syncInvoiceJournal } from "@/lib/books/ledger";
 import { checkInvoice, createInvoice } from "@/lib/invoice-service";
 import { requireStaff } from "@/lib/session";
 
@@ -102,6 +103,7 @@ export async function setInvoiceStatus(invoiceId: string, status: "APPROVED" | "
   if (!invoice) fail("/invoices", "Invoice not found.");
   if (invoice.status === "POSTED") fail(`/invoices/${invoiceId}`, "Posted invoices cannot change status here.");
   await session.db.invoice.updateMany({ where: { id: invoiceId }, data: { status } });
+  await syncInvoiceJournal(session.db, session.ctx, invoiceId);
   await audit(
     session.ctx,
     { action: "invoice.updated", entityType: "Invoice", entityId: invoiceId, clientId: invoice.clientId, reason, metadata: { from: invoice.status, to: status } },
@@ -118,6 +120,20 @@ export async function deleteInvoice(invoiceId: string, formData: FormData) {
   if (!invoice) fail("/invoices", "Invoice not found.");
   // Soft delete only: invoices are retained for at least five years.
   await session.db.invoice.updateMany({ where: { id: invoiceId }, data: { deletedAt: new Date() } });
+  await syncInvoiceJournal(session.db, session.ctx, invoiceId);
   await audit(session.ctx, { action: "invoice.deleted", entityType: "Invoice", entityId: invoiceId, clientId: invoice.clientId, reason }, session.user.name);
   redirect(`/clients/${invoice.clientId}`);
+}
+
+/** Move an invoice to another ledger account; the supplier remembers it for next time. */
+export async function recodeInvoiceAction(invoiceId: string, formData: FormData) {
+  const session = await requireStaff();
+  const code = String(formData.get("accountCode") ?? "");
+  const invoice = await session.db.invoice.findFirst({ where: { id: invoiceId, deletedAt: null }, select: { id: true, clientId: true } });
+  if (!invoice || !code) fail(`/invoices/${invoiceId}`, "Choose an account.");
+  const account = await session.db.ledgerAccount.findFirst({ where: { clientId: invoice.clientId, code }, select: { id: true } });
+  if (!account) fail(`/invoices/${invoiceId}`, "That account isn't in this client's chart.");
+  await recodeInvoice(session.db, session.ctx, invoiceId, code);
+  await audit(session.ctx, { action: "invoice.updated", entityType: "Invoice", entityId: invoiceId, clientId: invoice.clientId, reason: `Re-coded to ${code}` }, session.user.name);
+  revalidatePath(`/invoices/${invoiceId}`);
 }
