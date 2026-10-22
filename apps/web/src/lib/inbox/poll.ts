@@ -277,6 +277,7 @@ async function processMessage(
       documentId: doc.id,
       senderEmail: fromAddress,
       senderName: fromName ?? fromAddress.split("@")[1] ?? null,
+      subject,
       text,
       extraction: d.extraction,
       excludeVat: [practice?.vatNumber, matchedClient?.vatNumber].filter((v): v is string => !!v),
@@ -310,6 +311,7 @@ async function captureDocument(
     documentId: string;
     senderEmail: string;
     senderName: string | null;
+    subject: string;
     text: string;
     extraction: ExtractionResult | null;
     excludeVat: string[];
@@ -331,10 +333,10 @@ async function captureDocument(
   }
 
   // Parse once to find the supplier, then again with what we've learned about it.
-  let parsed = parseInvoiceText(a.text, { excludeVatNumbers: a.excludeVat, senderName: a.senderName });
+  let parsed = parseInvoiceText(a.text, { excludeVatNumbers: a.excludeVat, senderName: a.senderName, subject: a.subject });
   const keys = supplierKeys(parsed.supplierVatNumber?.value ?? null, a.senderEmail);
   const hints = await hintsFor(db, keys);
-  if (hints) parsed = parseInvoiceText(a.text, { ...hints, excludeVatNumbers: a.excludeVat, senderName: a.senderName });
+  if (hints) parsed = parseInvoiceText(a.text, { ...hints, excludeVatNumbers: a.excludeVat, senderName: a.senderName, subject: a.subject });
 
   const extracted = toExtractedJson(parsed, a.extraction?.method ?? "unknown", a.extraction?.note ?? null);
   const gate = confidenceGate(parsed.confidence);

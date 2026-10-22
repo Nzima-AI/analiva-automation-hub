@@ -151,3 +151,44 @@ describe("findPrintedValue", () => {
     expect(findPrintedValue(VODA_LIKE, "amount", 123n)).toBeNull();
   });
 });
+
+// Fictional invoice in the layout of a real one that read poorly: whole-rand amounts,
+// "No." under TAX INVOICE, ordinal date, 0% tax.
+const WHOLE_RANDS = `
+TERMS AND CONDITIONS
+Valid for 2 months
+PAYMENT METHOD
+Bank Transfer :
+Account no: 10000000001
+Branch code: 1234
+TAX INVOICE
+No. 4410-55500011122233
+Sent 23rd of September 2026 ITEM CODE TOTALR14 000
+Subtotal
+Tax (0%)
+R14 000
+0
+Total R14 000
+Managing Director
+C0004-7/IA06233/F0002/X006/R0106/001/C
+PO01234
+`;
+
+describe("real-world layout: whole rands, 0% VAT", () => {
+  it("reads it well enough to suggest", () => {
+    const p = parseInvoiceText(WHOLE_RANDS, { subject: "Fwd: Invoice for PO01234- From Example Office Supplies", senderName: "Someone Forwarding" });
+    expect(p.invoiceNumber?.value).toBe("4410-55500011122233");
+    expect(p.issueDate?.value.toISOString().slice(0, 10)).toBe("2026-09-23");
+    expect(p.totalCents?.value).toBe(1400000n);
+    expect(p.vatCents?.value).toBe(0n);
+    expect(p.subtotalCents?.value).toBe(1400000n);
+    expect(p.arithmeticConsistent).toBe(true);
+    expect(p.supplierName?.value).toBe("Example Office Supplies");
+    expect(confidenceGate(p.confidence)).toBe("SUGGEST");
+  });
+
+  it("does not read reference codes or account numbers as money", () => {
+    const p = parseInvoiceText("Ref C0004/R0106/001\nAccount no: 10000000001\nTotal R 250", {});
+    expect(p.totalCents?.value).toBe(25000n);
+  });
+});

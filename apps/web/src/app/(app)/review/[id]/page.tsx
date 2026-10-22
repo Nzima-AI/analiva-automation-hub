@@ -5,7 +5,7 @@ import { Badge, Button, Card, Field, Input, Notice, Select, Textarea } from "@/c
 import { formatDateTime } from "@/lib/format";
 import { readExtracted, type StoredField } from "@/lib/inbox/extracted";
 import { requireStaff } from "@/lib/session";
-import { dismissCapture, fileCapture } from "../actions";
+import { dismissCapture, fileCapture, rereadCapture } from "../actions";
 
 export const metadata = { title: "Review invoice" };
 
@@ -89,6 +89,11 @@ export default async function ReviewItemPage({ params, searchParams }: { params:
               Download
             </a>
           </p>
+          {!done && capture.documentText ? (
+            <form action={rereadCapture.bind(null, capture.id)} className="mt-3">
+              <Button variant="secondary">Re-read document</Button>
+            </form>
+          ) : null}
         </Card>
 
         <Card title={capture.status === "SUGGESTED" ? "Check and confirm" : "Fill in what's missing"}>

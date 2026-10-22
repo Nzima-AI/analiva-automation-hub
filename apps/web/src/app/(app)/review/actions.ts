@@ -3,11 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { findPrintedValue, isValidSaVatNumber, parseAmountToCents, parseDateRange, type InvoiceField } from "@aah/core";
+import { confidenceGate, findPrintedValue, isValidSaVatNumber, parseAmountToCents, parseDateRange, parseInvoiceText, type InvoiceField } from "@aah/core";
 import { audit } from "@aah/db";
 import { blankToNull, fail, parseForm } from "@/lib/forms";
-import { readExtracted } from "@/lib/inbox/extracted";
-import { rememberSender, rememberSupplier, supplierKeys, type Learned } from "@/lib/inbox/learning";
+import { readExtracted, toExtractedJson } from "@/lib/inbox/extracted";
+import { hintsFor, rememberSender, rememberSupplier, supplierKeys, type Learned } from "@/lib/inbox/learning";
 import { pollInboxes, type PollSummary } from "@/lib/inbox/poll";
 import { checkInvoice, createInvoice } from "@/lib/invoice-service";
 import { requireStaff } from "@/lib/session";
@@ -185,4 +185,37 @@ export async function checkInboxNow(_prev: CheckState): Promise<CheckState> {
   revalidatePath("/review");
   revalidatePath("/inbox");
   return { status: "done", results };
+}
+
+/** Read the stored document text again with the current rules and what's been learned since. */
+export async function rereadCapture(captureId: string) {
+  const session = await requireStaff();
+  const { db } = session;
+  const capture = await db.capture.findFirst({
+    where: { id: captureId, status: { notIn: ["FILED", "DISMISSED"] } },
+    include: { email: { select: { fromAddress: true, fromName: true, subject: true } }, client: { select: { vatNumber: true } } },
+  });
+  if (!capture) fail("/review", "That item has already been dealt with.");
+  if (!capture.documentText) fail(`/review/${captureId}`, "There is no readable text in this document to re-read.");
+  const practice = await db.practice.findFirst({ select: { vatNumber: true } });
+  const base = {
+    excludeVatNumbers: [practice?.vatNumber, capture.client?.vatNumber].filter((v): v is string => !!v),
+    senderName: capture.email?.fromName ?? capture.email?.fromAddress.split("@")[1] ?? null,
+    subject: capture.email?.subject ?? null,
+  };
+  let parsed = parseInvoiceText(capture.documentText, base);
+  const hints = await hintsFor(db, supplierKeys(parsed.supplierVatNumber?.value ?? null, capture.email?.fromAddress ?? null));
+  if (hints) parsed = parseInvoiceText(capture.documentText, { ...hints, ...base });
+  const previous = readExtracted(capture.extracted);
+  const gate = confidenceGate(parsed.confidence);
+  await db.capture.updateMany({
+    where: { id: captureId },
+    data: {
+      extracted: toExtractedJson(parsed, previous.method, previous.note) as object,
+      confidence: parsed.confidence,
+      status: !capture.clientId ? "NEEDS_CLIENT" : gate === "REVIEW" ? "NEEDS_REVIEW" : "SUGGESTED",
+    },
+  });
+  revalidatePath(`/review/${captureId}`);
+  redirect(`/review/${captureId}`);
 }

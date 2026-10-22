@@ -41,6 +41,8 @@ export interface ParseHints {
   supplierName?: string | null;
   /** VAT numbers that belong to the recipient (client/practice), never the supplier. */
   excludeVatNumbers?: string[];
+  /** Email subject; "Invoice from X" names the supplier. */
+  subject?: string | null;
   /** Sender display name or domain, used as a weak supplier-name guess. */
   senderName?: string | null;
 }
@@ -49,11 +51,14 @@ const LEARNED = 0.95;
 const LABELLED = 0.8;
 const GUESSED = 0.4;
 
-const AMOUNT_RE = /-?(?:R|ZAR)?\s?-?(?:\d{1,3}(?:[ , ]\d{3})+|\d+)[.,]\d{2}(?!\d)/i;
+// With cents ("1 234,50"), or rand-prefixed whole rands ("R14 000"), but not a reference like "R0106/001".
+const AMOUNT_RE =
+  /-?(?:(?:R|ZAR)?\s?-?(?:\d{1,3}(?:[ , ]\d{3})+|\d+)[.,]\d{2}(?!\d)|(?<![A-Za-z0-9])(?:R|ZAR)\s?(?:\d{1,3}(?:[ , ]\d{3})+|\d+)(?![\d/A-Za-z]|[.,]\d))/i;
 const AMOUNT_RE_G = new RegExp(AMOUNT_RE.source, "gi");
 const DATE_RE =
-  /\b(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{4})\b/i;
+  /\b(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{4}|\d{1,2}(?:st|nd|rd|th)?\s+(?:of\s+)?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?,?\s+\d{4})\b/i;
 const DATE_RE_G = new RegExp(DATE_RE.source, "gi");
+const SUPPLIER_IN_SUBJECT = /\bfrom\s+([A-Z][\w&'.,\- ]{2,80}?)\s*$/i;
 const VAT_RE_G = /\b4\d{3}[ ]?\d{3}[ ]?\d{3}\b/g;
 
 const LABELS: Record<Exclude<InvoiceField, "supplierName" | "supplierVatNumber">, string[]> = {
@@ -124,7 +129,11 @@ function findLabelled(lines: string[], labels: string[], valueRe: RegExp, exclud
 }
 
 function toDate(raw: string): Date | null {
-  const range = parseDateRange(raw.replace(/\.(?=\s)/, ""));
+  const cleaned = raw
+    .replace(/(\d)(st|nd|rd|th)\b/i, "$1")
+    .replace(/\s+of\s+/i, " ")
+    .replace(/[.,](?=\s)/g, "");
+  const range = parseDateRange(cleaned);
   return range && range.to.getTime() - range.from.getTime() === 86_400_000 ? range.from : null;
 }
 
@@ -159,6 +168,10 @@ export function parseInvoiceText(text: string, hints: ParseHints = {}): ParsedIn
         invoiceNumber = { value: f.raw.replace(/[.\-/]+$/, ""), confidence: isLearned ? LEARNED : LABELLED, source: `after "${l}"` };
         break outer;
       }
+    }
+    if (!invoiceNumber) {
+      const m = /tax\s*invoice[^\S\n]*\n?[^\S\n]*(?:no|nr|number|#)\.?[^\S\n]*[:#]?[^\S\n]*([A-Z0-9][A-Z0-9\-/]{1,40})/i.exec(text);
+      if (m && plausibleInvoiceNumber(m[1]!)) invoiceNumber = { value: m[1]!, confidence: 0.75, source: 'number under "tax invoice"' };
     }
     if (!invoiceNumber) {
       const m = /\b((?:INV|IN|TI|SI)[-/ ]?\d{3,}[A-Z0-9-]*)\b/i.exec(text);
@@ -203,6 +216,11 @@ export function parseInvoiceText(text: string, hints: ParseHints = {}): ParsedIn
     if (max !== null) totalCents = { value: max, confidence: GUESSED, source: "largest amount in document" };
   }
 
+  // "VAT (0%)" / "Tax 0%" / "No VAT": a zero-rated or non-VAT invoice.
+  if (!vatCents && /\b(?:vat|tax)\s*\(?\s*0\s*%|\bno\s+vat\b|not\s+(?:a\s+)?vat\s+(?:vendor|registered)/i.test(text)) {
+    vatCents = { value: 0n, confidence: LABELLED, source: "invoice shows 0% VAT" };
+  }
+
   // Fill the third amount when two are known; check they agree.
   let arithmeticConsistent = false;
   if (totalCents && vatCents && subtotalCents) {
@@ -210,7 +228,7 @@ export function parseInvoiceText(text: string, hints: ParseHints = {}): ParsedIn
     arithmeticConsistent = diff >= -2n && diff <= 2n;
   } else if (totalCents && vatCents && !subtotalCents && vatCents.value < totalCents.value) {
     subtotalCents = { value: totalCents.value - vatCents.value, confidence: Math.min(totalCents.confidence, vatCents.confidence), source: "total minus VAT" };
-    arithmeticConsistent = isFifteenPercent(subtotalCents.value, vatCents.value);
+    arithmeticConsistent = vatCents.value === 0n || isFifteenPercent(subtotalCents.value, vatCents.value);
   } else if (totalCents && subtotalCents && !vatCents && subtotalCents.value <= totalCents.value) {
     vatCents = { value: totalCents.value - subtotalCents.value, confidence: Math.min(totalCents.confidence, subtotalCents.confidence), source: "total minus subtotal" };
     arithmeticConsistent = vatCents.value === 0n || isFifteenPercent(subtotalCents.value, vatCents.value);
@@ -231,7 +249,9 @@ export function parseInvoiceText(text: string, hints: ParseHints = {}): ParsedIn
   // ---- supplier name
   let supplierName: FieldValue<string> | null = null;
   if (hints.supplierName) supplierName = { value: hints.supplierName, confidence: LEARNED, source: "known supplier" };
-  else if (hints.senderName) supplierName = { value: hints.senderName, confidence: 0.5, source: "email sender" };
+  else if (hints.subject && SUPPLIER_IN_SUBJECT.test(hints.subject)) {
+    supplierName = { value: SUPPLIER_IN_SUBJECT.exec(hints.subject)![1]!.trim(), confidence: 0.6, source: "email subject" };
+  } else if (hints.senderName) supplierName = { value: hints.senderName, confidence: 0.5, source: "email sender" };
   else {
     const first = lines.find((l) => /[a-z]{3}/i.test(l) && !/tax\s*invoice|^invoice$|^page\s/i.test(l));
     if (first) supplierName = { value: first.slice(0, 120), confidence: 0.3, source: "first line of document" };
