@@ -63,6 +63,11 @@ export const MODEL_OWNERSHIP: Record<string, Ownership> = {
   Document: "client-optional",
   AuditLog: "audit",
   MailAccount: "practice",
+  EmailMessage: "client-optional",
+  Capture: "client-optional",
+  SenderRule: "practice",
+  SupplierProfile: "practice",
+  CaptureCorrection: "practice",
 };
 
 const READ_OPS = new Set([

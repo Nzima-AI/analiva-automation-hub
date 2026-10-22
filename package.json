@@ -24,6 +24,7 @@
       "@prisma/engines",
       "prisma",
       "esbuild",
+      "tesseract.js",
       "sharp",
       "@tailwindcss/oxide"
     ]

@@ -66,6 +66,24 @@ enum CaptureSource {
   AI
   IMPORT
   API
+  EMAIL
+}
+
+enum EmailKind {
+  INVOICE
+  STATEMENT
+  CIPC
+  QUERY
+  OTHER
+}
+
+enum CaptureStatus {
+  NEEDS_CLIENT
+  NEEDS_REVIEW
+  SUGGESTED
+  FILED
+  DISMISSED
+  FAILED
 }
 
 enum DocumentKind {
@@ -137,6 +155,11 @@ model Practice {
   documents   Document[]
   auditLogs   AuditLog[]
   mailAccounts MailAccount[]
+  emails       EmailMessage[]
+  captures     Capture[]
+  senderRules  SenderRule[]
+  supplierProfiles SupplierProfile[]
+  corrections  CaptureCorrection[]
 }
 
 model User {
@@ -195,6 +218,9 @@ model Client {
   invoices  Invoice[]
   lines     InvoiceLine[]
   documents Document[]
+  emails    EmailMessage[]
+  captures  Capture[]
+  senderRules SenderRule[]
 
   @@unique([practiceId, code])
   @@index([practiceId, status])
@@ -337,6 +363,7 @@ model Invoice {
   sourceDocument Document?     @relation(fields: [sourceDocumentId], references: [id])
   capturedBy     User?         @relation("InvoiceCapturer", fields: [capturedByUserId], references: [id])
   lines          InvoiceLine[]
+  capture        Capture?
 
   @@index([practiceId, invoiceNumberNorm])
   @@index([practiceId, totalCents])
@@ -381,14 +408,18 @@ model Document {
   storagePath      String         @unique
   sha256           String
   uploadedByUserId String?
+  /// Set when the file arrived as an email attachment
+  emailMessageId   String?
   deletedAt        DateTime?
   createdAt        DateTime       @default(now())
 
   practice   Practice  @relation(fields: [practiceId], references: [id])
   client     Client?   @relation(fields: [clientId], references: [id])
   uploadedBy User?     @relation("DocumentUploader", fields: [uploadedByUserId], references: [id])
+  email      EmailMessage? @relation(fields: [emailMessageId], references: [id])
   invoices   Invoice[]
   mandates   Mandate[]
+  captures   Capture[]
 
   @@index([practiceId, sha256])
   @@index([clientId, createdAt])
@@ -441,10 +472,133 @@ model MailAccount {
   status           ConnectionStatus @default(UNTESTED)
   lastTestedAt     DateTime?
   lastError        String?
+  // Inbox polling state (IMAP UIDs are only meaningful within a UIDVALIDITY)
+  uidValidity      String?
+  lastUid          Int?
+  lastPolledAt     DateTime?
+  lastPollError    String?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
-  practice Practice @relation(fields: [practiceId], references: [id])
+  practice Practice       @relation(fields: [practiceId], references: [id])
+  emails   EmailMessage[]
 
   @@unique([practiceId, emailAddress])
+}
+
+/// An email fetched from a connected mailbox. The raw .eml is kept in storage.
+model EmailMessage {
+  id              String    @id @default(cuid())
+  practiceId      String
+  /// Matched client, if any
+  clientId        String?
+  mailAccountId   String
+  messageId       String
+  imapUid         Int
+  fromAddress     String
+  fromName        String?
+  toAddresses     String[]  @default([])
+  subject         String
+  receivedAt      DateTime
+  textPreview     String?
+  kind            EmailKind @default(OTHER)
+  kindReason      String?
+  /// MATCHED | AMBIGUOUS | UNMATCHED
+  matchStatus     String
+  matchCandidates Json?
+  rawStoragePath  String?
+  createdAt       DateTime  @default(now())
+
+  practice    Practice    @relation(fields: [practiceId], references: [id])
+  client      Client?     @relation(fields: [clientId], references: [id])
+  mailAccount MailAccount @relation(fields: [mailAccountId], references: [id], onDelete: Cascade)
+  documents   Document[]
+  captures    Capture[]
+
+  @@unique([mailAccountId, messageId])
+  @@index([practiceId, receivedAt])
+}
+
+/// One invoice-like document waiting to be (or already) filed. Holds what the
+/// rules extracted, separate from the Invoice created from it.
+model Capture {
+  id              String        @id @default(cuid())
+  practiceId      String
+  clientId        String?
+  emailMessageId  String?
+  documentId      String
+  status          CaptureStatus
+  confidence      Float
+  /// { field: { value, confidence, source } }; amounts as cent strings, dates as YYYY-MM-DD
+  extracted       Json
+  /// Text the rules read, kept so corrections can teach supplier labels
+  documentText    String?
+  issues          String[]      @default([])
+  note            String?
+  invoiceId       String?       @unique
+  decidedByUserId String?
+  decidedAt       DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  practice    Practice            @relation(fields: [practiceId], references: [id])
+  client      Client?             @relation(fields: [clientId], references: [id])
+  email       EmailMessage?       @relation(fields: [emailMessageId], references: [id])
+  document    Document            @relation(fields: [documentId], references: [id])
+  invoice     Invoice?            @relation(fields: [invoiceId], references: [id])
+  corrections CaptureCorrection[]
+
+  @@index([practiceId, status])
+}
+
+/// Learned: mail from this address or @domain belongs to this client.
+model SenderRule {
+  id              String   @id @default(cuid())
+  practiceId      String
+  pattern         String
+  clientId        String
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+  client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([practiceId, pattern])
+}
+
+/// Learned per supplier (keyed by VAT number or @sender-domain): its name and the
+/// labels its invoices use, so the next invoice reads with higher confidence.
+model SupplierProfile {
+  id           String   @id @default(cuid())
+  practiceId   String
+  key          String
+  supplierName String
+  vatNumber    String?
+  /// { invoiceNumber: ["doc ref"], total: ["payable now"], ... }
+  labels       Json     @default("{}")
+  timesFiled   Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+
+  @@unique([practiceId, key])
+}
+
+/// Every user correction to an extracted field (CLAUDE.md §7).
+model CaptureCorrection {
+  id             String   @id @default(cuid())
+  practiceId     String
+  captureId      String
+  field          String
+  extractedValue String?
+  correctedValue String?
+  learnedLabel   String?
+  userId         String?
+  createdAt      DateTime @default(now())
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+  capture  Capture  @relation(fields: [captureId], references: [id], onDelete: Cascade)
+
+  @@index([practiceId, createdAt])
 }

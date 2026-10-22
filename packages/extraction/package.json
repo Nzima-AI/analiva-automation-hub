@@ -1,0 +1,23 @@
+{
+  "name": "@aah/extraction",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Text out of documents: PDF text layer (unpdf) and OCR for images (tesseract.js). Free, no external AI.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "tesseract.js": "7.0.0",
+    "unpdf": "1.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.1",
+    "typescript": "5.9.3"
+  }
+}

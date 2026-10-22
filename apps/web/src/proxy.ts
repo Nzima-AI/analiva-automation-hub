@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/auth", "/forgot-password"];
+const PUBLIC_PATHS = ["/login", "/auth", "/forgot-password", "/api/cron"];
 
 /** Refresh the Supabase session cookie on every request and gate private pages. */
 export async function proxy(request: NextRequest) {

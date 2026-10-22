@@ -51,7 +51,18 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
       <PageHeader
         title="Invoices"
         subtitle={`${total} invoice${total === 1 ? "" : "s"} · ${formatCents(sum._sum.totalCents ?? 0n)} total`}
-        actions={<ButtonLink href="/invoices/new">Capture invoice</ButtonLink>}
+        actions={
+          <>
+            <ButtonLink
+              variant="secondary"
+              href={`/invoices/export?${new URLSearchParams(Object.fromEntries(Object.entries({ client: p.client, from: p.from, to: p.to }).filter(([, v]) => v)) as Record<string, string>)}`}
+              prefetch={false}
+            >
+              Export for Analiva (CSV)
+            </ButtonLink>
+            <ButtonLink href="/invoices/new">Capture invoice</ButtonLink>
+          </>
+        }
       />
       <form className="mb-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-7">
         <Select name="client" defaultValue={p.client ?? ""} className="lg:col-span-2" aria-label="Client">

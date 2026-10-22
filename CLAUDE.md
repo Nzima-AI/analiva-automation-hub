@@ -222,7 +222,7 @@ Work through these in order. Finish and test each phase before the next.
 - Client and invoice records, document upload, search across all years.
 - Phone-call lookup screen: search by name, number, invoice, amount, date.
 
-**Phase 2: Inbox to invoice capture**
+**Phase 2: Inbox to invoice capture** — built 2026-10-22, rule-based (no paid AI), see ADR 0003
 - Connect a test mailbox, store messages and attachments.
 - Classification, client matching, confidence scoring.
 - Invoice extraction, validation, duplicate detection, review queue.
@@ -282,4 +282,4 @@ Work through these in order. Finish and test each phase before the next.
 
 ## 16. Next task for Claude
 
-Phase 2: inbox to invoice capture. Before coding, confirm the open questions in §15 that block it (email platform, Analiva import format) and decide how background jobs run (ADR 0001).
+Tune Phase 2 on real invoices (review queue corrections feed supplier profiles). Then Phase 3: outbound and white label. Still open: Analiva's import format (CSV export columns are a placeholder).

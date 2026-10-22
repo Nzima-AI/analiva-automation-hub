@@ -13,3 +13,5 @@ export const INVOICE_RETENTION_YEARS = 5;
 
 export const DISPLAY_TIMEZONE = "Africa/Johannesburg";
 export * from "./mail-presets";
+export * from "./capture/invoice-parser";
+export * from "./capture/classify-and-match";

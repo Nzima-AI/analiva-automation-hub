@@ -5,12 +5,15 @@ import { humanise } from "@/lib/format";
 import { requireSession } from "@/lib/session";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, practice, ctx } = await requireSession();
+  const { user, practice, ctx, db } = await requireSession();
   const staff = isPracticeRole(ctx.role);
+  const waiting = staff ? await db.capture.count({ where: { status: { in: ["NEEDS_CLIENT", "SUGGESTED", "NEEDS_REVIEW", "FAILED"] } } }) : 0;
 
   const nav = staff
     ? [
         { href: "/", label: "Lookup", exact: true },
+        { href: "/review", label: waiting ? `Review queue (${waiting})` : "Review queue" },
+        { href: "/inbox", label: "Inbox" },
         { href: "/clients", label: "Clients" },
         { href: "/invoices", label: "Invoices" },
         { href: "/documents", label: "Documents" },

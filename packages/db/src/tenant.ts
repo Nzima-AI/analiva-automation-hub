@@ -27,13 +27,18 @@ export function tenantDb(ctx: TenantContext) {
 export type TenantDb = ReturnType<typeof tenantDb>;
 
 /** Write an audit entry for an action taken by the context's user. */
-export async function audit(ctx: TenantContext, entry: AuditEntryInput, actorLabel?: string): Promise<void> {
+export async function audit(
+  ctx: TenantContext,
+  entry: AuditEntryInput,
+  actorLabel?: string,
+  actorType: "USER" | "SYSTEM" | "API_KEY" = "USER",
+): Promise<void> {
   await tenantDb(ctx).auditLog.create({
     data: {
       practiceId: ctx.practiceId,
       clientId: entry.clientId ?? null,
-      actorType: "USER",
-      actorId: ctx.userId,
+      actorType,
+      actorId: actorType === "USER" ? ctx.userId : null,
       actorLabel: actorLabel ?? null,
       action: entry.action,
       entityType: entry.entityType,

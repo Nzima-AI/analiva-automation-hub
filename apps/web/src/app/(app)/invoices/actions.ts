@@ -3,17 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import {
-  INVOICE_RETENTION_YEARS,
-  isValidSaVatNumber,
-  normaliseInvoiceNumber,
-  parseAmountToCents,
-  parseDateRange,
-  validateInvoiceTotals,
-  vatFromInclusive,
-} from "@aah/core";
+import { isValidSaVatNumber, parseAmountToCents, parseDateRange, vatFromInclusive } from "@aah/core";
 import { audit } from "@aah/db";
 import { blankToNull, fail, parseForm } from "@/lib/forms";
+import { checkInvoice, createInvoice } from "@/lib/invoice-service";
 import { requireStaff } from "@/lib/session";
 
 const schema = z.object({
@@ -68,50 +61,26 @@ export async function captureInvoice(formData: FormData) {
     if (!doc) fail(backTo, "The linked document does not belong to this client.");
   }
 
-  let supplierId: string | null = null;
-  if (input.supplierName) {
-    const supplier = await db.supplier.upsert({
-      where: { clientId_name: { clientId: client.id, name: input.supplierName } },
-      create: { clientId: client.id, practiceId: ctx.practiceId, name: input.supplierName, vatNumber: supplierVat },
-      update: supplierVat ? { vatNumber: supplierVat } : {},
-    });
-    supplierId = supplier.id;
-  }
-
-  const invoiceNumberNorm = normaliseInvoiceNumber(input.invoiceNumber);
-  const issues = validateInvoiceTotals({ subtotalCents, vatCents, totalCents, supplierVatNumber: supplierVat }).map((i) => i.code as string);
-
-  const duplicate = await db.invoice.findFirst({
-    where: { clientId: client.id, supplierId, invoiceNumberNorm, deletedAt: null },
-    select: { id: true },
-  });
-  if (duplicate) issues.push("SUSPECTED_DUPLICATE");
-
-  const retainUntil = new Date(issueDate);
-  retainUntil.setUTCFullYear(retainUntil.getUTCFullYear() + INVOICE_RETENTION_YEARS);
-
-  const invoice = await db.invoice.create({
-    data: {
-      practiceId: ctx.practiceId,
-      clientId: client.id,
-      supplierId,
-      direction: input.direction,
-      invoiceNumber: input.invoiceNumber,
-      invoiceNumberNorm,
-      issueDate,
-      dueDate,
-      subtotalCents,
-      vatCents,
-      totalCents,
-      description: input.description,
-      status: issues.length > 0 ? "NEEDS_REVIEW" : "CAPTURED",
-      validationIssues: issues,
-      sourceDocumentId: input.sourceDocumentId,
-      captureSource: "MANUAL",
-      capturedByUserId: ctx.userId,
-      retainUntil,
-    },
-  });
+  const invoiceInput = {
+    clientId: client.id,
+    direction: input.direction,
+    supplierName: input.supplierName,
+    supplierVatNumber: supplierVat,
+    invoiceNumber: input.invoiceNumber,
+    issueDate,
+    dueDate,
+    subtotalCents,
+    vatCents,
+    totalCents,
+    description: input.description,
+    sourceDocumentId: input.sourceDocumentId,
+    captureSource: "MANUAL" as const,
+    confidence: null,
+    capturedByUserId: ctx.userId,
+  };
+  const check = await checkInvoice(db, ctx, invoiceInput);
+  const issues = check.issues;
+  const invoice = await createInvoice(db, ctx, invoiceInput, check);
   await audit(
     ctx,
     {
