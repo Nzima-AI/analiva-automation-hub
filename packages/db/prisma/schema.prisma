@@ -1,0 +1,395 @@
+// Analiva Automation Hub — data model (Phase 0 + 1).
+//
+// Rules (CLAUDE.md §6):
+// - Every tenant-owned table has practiceId; client-owned tables also have clientId.
+//   Queries go through `tenantDb(ctx)` which enforces this (packages/core/src/tenancy.ts).
+// - Money is BigInt minor units (cents) with a currency. Never floats.
+// - Original documents (Document) and extracted data (Invoice) are separate rows,
+//   linked, with a record of who/what extracted it.
+// - Soft delete (deletedAt) where records matter legally. Invoices retained >= 5 years.
+// - All timestamps UTC; the UI displays Africa/Johannesburg.
+//
+// Hosted on Supabase Postgres. Every table has RLS enabled with no policies, so the
+// public PostgREST API (anon / authenticated keys) can read nothing; the app connects
+// as the table owner through Prisma. See migrations/*_rls_and_search.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  OWNER
+  STAFF
+  CLIENT
+  CLIENT_STAFF
+}
+
+enum ClientStatus {
+  PROSPECT
+  ONBOARDING
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum ServiceType {
+  ACCOUNTING
+  PAYROLL
+  CIPC
+  BRANDING
+  WEBSITE
+  LAUNCH
+}
+
+enum InvoiceDirection {
+  // Supplier bill received by the client
+  PAYABLE
+  // Invoice issued by the client to its customer
+  RECEIVABLE
+}
+
+enum InvoiceStatus {
+  CAPTURED
+  NEEDS_REVIEW
+  APPROVED
+  POSTED
+  REJECTED
+}
+
+enum CaptureSource {
+  MANUAL
+  AI
+  IMPORT
+  API
+}
+
+enum DocumentKind {
+  INVOICE
+  STATEMENT
+  CIPC
+  CONTRACT
+  MANDATE
+  BRAND_ASSET
+  PAYROLL
+  TAX
+  OTHER
+}
+
+enum DocumentSource {
+  UPLOAD
+  EMAIL
+  PORTAL
+  API
+}
+
+enum ActorType {
+  USER
+  SYSTEM
+  API_KEY
+}
+
+model Practice {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  vatNumber String?
+  email     String?
+  phone     String?
+  timezone  String   @default("Africa/Johannesburg")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users       User[]
+  clients     Client[]
+  contacts    Contact[]
+  workspaces  Workspace[]
+  services    ClientService[]
+  mandates    Mandate[]
+  suppliers   Supplier[]
+  invoices    Invoice[]
+  lines       InvoiceLine[]
+  documents   Document[]
+  auditLogs   AuditLog[]
+}
+
+model User {
+  id         String    @id @default(cuid())
+  practiceId String
+  /// Supabase auth.users.id
+  authUserId String    @unique @db.Uuid
+  email      String
+  name       String
+  role       UserRole
+  /// Set for CLIENT and CLIENT_STAFF
+  clientId   String?
+  disabledAt DateTime?
+  lastSeenAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+  client   Client?  @relation(fields: [clientId], references: [id])
+
+  uploadedDocuments Document[] @relation("DocumentUploader")
+  capturedInvoices  Invoice[]  @relation("InvoiceCapturer")
+
+  @@unique([practiceId, email])
+  @@index([clientId])
+}
+
+model Client {
+  id                 String       @id @default(cuid())
+  practiceId         String
+  /// Human-friendly reference, e.g. CL-0042. Unique per practice.
+  code               String
+  name               String
+  tradingName        String?
+  /// CIPC registration, canonical form 2019/123456/07
+  registrationNumber String?
+  vatNumber          String?
+  taxNumber          String?
+  email              String?
+  phone              String?
+  /// Email domains used for matching inbound mail, lowercase
+  emailDomains       String[]     @default([])
+  status             ClientStatus @default(ONBOARDING)
+  notes              String?
+  deletedAt          DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  practice  Practice        @relation(fields: [practiceId], references: [id])
+  users     User[]
+  contacts  Contact[]
+  workspace Workspace?
+  services  ClientService[]
+  mandates  Mandate[]
+  suppliers Supplier[]
+  invoices  Invoice[]
+  lines     InvoiceLine[]
+  documents Document[]
+
+  @@unique([practiceId, code])
+  @@index([practiceId, status])
+  @@index([practiceId, registrationNumber])
+  @@index([practiceId, vatNumber])
+  @@index([practiceId, phone])
+}
+
+model Contact {
+  id         String   @id @default(cuid())
+  practiceId String
+  clientId   String
+  name       String
+  email      String?
+  phone      String?
+  position   String?
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+  client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([practiceId, email])
+  @@index([practiceId, phone])
+  @@index([clientId])
+}
+
+/// Per-client space: branding and portal settings. Services live in ClientService.
+model Workspace {
+  id           String   @id @default(cuid())
+  practiceId   String
+  clientId     String   @unique
+  brandPrimary String?
+  brandAccent  String?
+  logoDocumentId String?
+  emailFooter  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+  client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model ClientService {
+  id         String      @id @default(cuid())
+  practiceId String
+  clientId   String
+  service    ServiceType
+  enabled    Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+  client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, service])
+  @@index([practiceId])
+}
+
+/// Signed authority to send email in the client's name. Outbound mail (Phase 3)
+/// is refused without a valid, unexpired, unrevoked mandate.
+model Mandate {
+  id          String    @id @default(cuid())
+  practiceId  String
+  clientId    String
+  scope       String
+  signedBy    String
+  signedAt    DateTime
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  documentId  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  practice Practice  @relation(fields: [practiceId], references: [id])
+  client   Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  document Document? @relation(fields: [documentId], references: [id])
+
+  @@index([clientId])
+  @@index([practiceId])
+}
+
+/// A supplier in a client's books.
+model Supplier {
+  id         String    @id @default(cuid())
+  practiceId String
+  clientId   String
+  name       String
+  vatNumber  String?
+  email      String?
+  phone      String?
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  practice Practice  @relation(fields: [practiceId], references: [id])
+  client   Client    @relation(fields: [clientId], references: [id])
+  invoices Invoice[]
+
+  @@unique([clientId, name])
+  @@index([practiceId, vatNumber])
+}
+
+model Invoice {
+  id                    String           @id @default(cuid())
+  practiceId            String
+  clientId              String
+  supplierId            String?
+  direction             InvoiceDirection @default(PAYABLE)
+  invoiceNumber         String
+  /// Uppercase alphanumerics only; used for search and duplicate detection
+  invoiceNumberNorm     String
+  issueDate             DateTime         @db.Date
+  dueDate               DateTime?        @db.Date
+  currency              String           @default("ZAR") @db.Char(3)
+  subtotalCents         BigInt
+  vatCents              BigInt
+  totalCents            BigInt
+  status                InvoiceStatus    @default(CAPTURED)
+  description           String?
+  /// 0..1 extraction confidence; null for manual capture
+  confidence            Float?
+  /// Validation issue codes from @aah/core validateInvoiceTotals
+  validationIssues      String[]         @default([])
+  // Provenance: the original document and who or what extracted these fields
+  sourceDocumentId      String?
+  captureSource         CaptureSource    @default(MANUAL)
+  capturedByUserId      String?
+  capturedAt            DateTime         @default(now())
+  /// Earliest date this record may be purged (>= 5 years)
+  retainUntil           DateTime
+  deletedAt             DateTime?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  practice       Practice      @relation(fields: [practiceId], references: [id])
+  client         Client        @relation(fields: [clientId], references: [id])
+  supplier       Supplier?     @relation(fields: [supplierId], references: [id])
+  sourceDocument Document?     @relation(fields: [sourceDocumentId], references: [id])
+  capturedBy     User?         @relation("InvoiceCapturer", fields: [capturedByUserId], references: [id])
+  lines          InvoiceLine[]
+
+  @@index([practiceId, invoiceNumberNorm])
+  @@index([practiceId, totalCents])
+  @@index([practiceId, issueDate])
+  @@index([clientId, issueDate])
+  @@index([supplierId, invoiceNumberNorm])
+}
+
+model InvoiceLine {
+  id             String  @id @default(cuid())
+  practiceId     String
+  clientId       String
+  invoiceId      String
+  position       Int
+  description    String
+  quantity       Decimal @db.Decimal(14, 4)
+  unitPriceCents BigInt
+  /// Basis points, 1500 = 15%
+  vatRateBps     Int     @default(1500)
+  lineTotalCents BigInt
+  accountCode    String?
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+  client   Client   @relation(fields: [clientId], references: [id])
+  invoice  Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+/// An original file exactly as received. Extracted data lives elsewhere and links here.
+model Document {
+  id               String         @id @default(cuid())
+  practiceId       String
+  /// Null for practice-level documents (never visible to client roles)
+  clientId         String?
+  kind             DocumentKind   @default(OTHER)
+  source           DocumentSource @default(UPLOAD)
+  filename         String
+  mimeType         String
+  sizeBytes        Int
+  /// Path inside the private Supabase Storage bucket
+  storagePath      String         @unique
+  sha256           String
+  uploadedByUserId String?
+  deletedAt        DateTime?
+  createdAt        DateTime       @default(now())
+
+  practice   Practice  @relation(fields: [practiceId], references: [id])
+  client     Client?   @relation(fields: [clientId], references: [id])
+  uploadedBy User?     @relation("DocumentUploader", fields: [uploadedByUserId], references: [id])
+  invoices   Invoice[]
+  mandates   Mandate[]
+
+  @@index([practiceId, sha256])
+  @@index([clientId, createdAt])
+}
+
+/// Append-only. Who, what, when and why for every action.
+model AuditLog {
+  id         String    @id @default(cuid())
+  practiceId String
+  clientId   String?
+  actorType  ActorType
+  actorId    String?
+  actorLabel String?
+  action     String
+  entityType String
+  entityId   String
+  reason     String?
+  metadata   Json?
+  createdAt  DateTime  @default(now())
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+
+  @@index([practiceId, createdAt])
+  @@index([practiceId, entityType, entityId])
+  @@index([clientId, createdAt])
+}

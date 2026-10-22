@@ -1,0 +1,16 @@
+node_modules/
+.next/
+.vercel/
+.turbo/
+coverage/
+*.log
+*.tsbuildinfo
+next-env.d.ts
+
+# Secrets — never commit
+.env
+.env*.local
+!.env.example
+
+# Generated Prisma client
+packages/db/src/generated/

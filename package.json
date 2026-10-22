@@ -1,0 +1,31 @@
+{
+  "name": "analiva-automation-hub",
+  "private": true,
+  "description": "Analiva Automation Hub — multi-client practice platform: inbox capture, CRM, white-label outbound, client journeys, API and webhooks.",
+  "packageManager": "pnpm@10.34.7",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @aah/web dev",
+    "build": "pnpm --filter @aah/web build",
+    "test": "pnpm -r --if-present test",
+    "test:e2e": "echo \"TODO: Playwright suite lands with Phase 2\"",
+    "lint": "pnpm -r --if-present typecheck",
+    "db:generate": "pnpm --filter @aah/db generate",
+    "db:migrate": "pnpm --filter @aah/db migrate",
+    "db:migrate:dev": "pnpm --filter @aah/db migrate:dev",
+    "db:seed": "pnpm --filter @aah/db seed",
+    "setup:storage": "pnpm --filter @aah/db exec tsx scripts/setup-storage.ts",
+    "create-owner": "pnpm --filter @aah/db exec tsx scripts/create-owner.ts"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/engines",
+      "prisma",
+      "esbuild",
+      "sharp",
+      "@tailwindcss/oxide"
+    ]
+  }
+}
