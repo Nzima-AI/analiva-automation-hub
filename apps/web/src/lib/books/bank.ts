@@ -65,7 +65,7 @@ export async function autoProcess(db: TenantDb, ctx: TenantContext, clientId: st
   if (pending.length === 0) return { matched: 0, coded: 0, left: 0 };
   const [openInvoices, rules] = await Promise.all([
     db.invoice.findMany({
-      where: { clientId, deletedAt: null, status: { in: ["CAPTURED", "APPROVED", "POSTED"] }, journalEntryId: { not: null } },
+      where: { clientId, deletedAt: null, status: { not: "REJECTED" }, journalEntryId: { not: null } },
       include: { supplier: { select: { name: true } } },
     }),
     db.bankRule.findMany({ where: { OR: [{ clientId }, { clientId: null }] }, orderBy: { createdAt: "asc" } }),

@@ -53,7 +53,10 @@ export async function checkInvoice(db: TenantDb, ctx: TenantContext, input: Invo
     vatCents: input.vatCents,
     totalCents: input.totalCents,
     supplierVatNumber: supplierVat,
-  }).map((i) => i.code);
+  })
+    .map((i) => i.code)
+    // On a sales invoice the client is the VAT vendor; the customer needn't have a VAT number.
+    .filter((code) => !(input.direction === "RECEIVABLE" && code === "VAT_WITHOUT_VAT_NUMBER"));
 
   // Same number from the same supplier (or, with no supplier, same number and total) for this client.
   const duplicate = await db.invoice.findFirst({
