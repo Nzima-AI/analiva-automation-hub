@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Activity, Gauge, Landmark, PieChart, Receipt, Scale, TrendingUp, Wallet } from "lucide-react";
+import { Bank, ChartPieSlice, Gauge, Pulse, Receipt, Scales, TrendUp, Wallet } from "@phosphor-icons/react/dist/ssr";
 import { formatCents, natural, type Ratio } from "@aah/core";
 import { BarTrend, Donut } from "@/components/charts";
 import { Badge, Button, ButtonLink, Card, Empty, Notice, StatCard } from "@/components/ui";
@@ -15,7 +15,7 @@ export const metadata = { title: "Books overview" };
 const toneBadge = { good: "positive", watch: "warn", risk: "danger", neutral: "neutral" } as const;
 
 function formatRatio(r: Ratio): string {
-  if (r.value === null) return "—";
+  if (r.value === null) return "-";
   switch (r.format) {
     case "pct":
       return `${r.value}%`;
@@ -67,7 +67,7 @@ export default async function BooksOverviewPage({ params, searchParams }: { para
       {backfill}
       <Card>
         <Empty
-          icon={Landmark}
+          icon={Bank}
           action={
             <div className="flex gap-2">
               <ButtonLink href={`/books/${clientId}/bank`}>Import a bank statement</ButtonLink>
@@ -98,32 +98,32 @@ export default async function BooksOverviewPage({ params, searchParams }: { para
         Financial year to date: {formatCalendarDate(from)} to {formatCalendarDate(today)}
       </p>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Sales" value={formatCents(t.salesCents)} icon={TrendingUp} hint={t.otherIncomeCents ? `+ ${formatCents(t.otherIncomeCents)} other income` : "Year to date"} href={`/books/${clientId}/reports?r=is`} />
-        <StatCard label="Gross profit" value={formatCents(t.grossProfitCents)} icon={Activity} hint={s.is.grossMarginPct === null ? "—" : `${s.is.grossMarginPct}% gross margin`} />
+        <StatCard label="Sales" value={formatCents(t.salesCents)} icon={TrendUp} hint={t.otherIncomeCents ? `+ ${formatCents(t.otherIncomeCents)} other income` : "Year to date"} href={`/books/${clientId}/reports?r=is`} />
+        <StatCard label="Gross profit" value={formatCents(t.grossProfitCents)} icon={Pulse} hint={s.is.grossMarginPct === null ? "-" : `${s.is.grossMarginPct}% gross margin`} />
         <StatCard
           label="Net profit"
           value={formatCents(t.netProfitCents)}
           icon={Wallet}
           tone={t.netProfitCents < 0n ? "negative" : "positive"}
-          hint={s.is.netMarginPct === null ? "—" : `${s.is.netMarginPct}% net margin`}
+          hint={s.is.netMarginPct === null ? "-" : `${s.is.netMarginPct}% net margin`}
           href={`/books/${clientId}/reports?r=is`}
         />
-        <StatCard label="Bank" value={formatCents(s.bs.totals.bankCents)} icon={Landmark} hint={`Moved ${formatCents(s.cf.bankMovementCents)} this year`} href={`/books/${clientId}/bank`} />
+        <StatCard label="Bank" value={formatCents(s.bs.totals.bankCents)} icon={Bank} hint={`Moved ${formatCents(s.cf.bankMovementCents)} this year`} href={`/books/${clientId}/bank`} />
         <StatCard label="Owed by customers" value={formatCents(s.debtors)} icon={Receipt} href={`/books/${clientId}/reports?r=aged`} />
         <StatCard label="Owed to suppliers" value={formatCents(s.creditors)} icon={Receipt} href={`/books/${clientId}/reports?r=aged`} />
         <StatCard
           label={s.vatPayableCents >= 0n ? "VAT payable" : "VAT refundable"}
           value={formatCents(s.vatPayableCents < 0n ? -s.vatPayableCents : s.vatPayableCents)}
-          icon={Scale}
+          icon={Scales}
           tone={s.vatPayableCents >= 0n ? "warn" : "positive"}
           hint={client.vatRegistered ? "Output less input VAT, all periods" : "Client not VAT registered"}
           href={`/books/${clientId}/reports?r=vat`}
         />
-        <StatCard label="Balance sheet" value={s.bs.balanced ? "Balances" : "Out of balance"} icon={Scale} tone={s.bs.balanced ? "positive" : "negative"} href={`/books/${clientId}/reports?r=bs`} hint={`Assets ${formatCents(s.bs.totals.totalAssetsCents)}`} />
+        <StatCard label="Balance sheet" value={s.bs.balanced ? "Balances" : "Out of balance"} icon={Scales} tone={s.bs.balanced ? "positive" : "negative"} href={`/books/${clientId}/reports?r=bs`} hint={`Assets ${formatCents(s.bs.totals.totalAssetsCents)}`} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <Card title="Income, expenses and profit" description="Last 12 months" icon={TrendingUp} className="xl:col-span-2">
+        <Card title="Income, expenses and profit" description="Last 12 months" icon={TrendUp} className="xl:col-span-2">
           <BarTrend
             data={series.map((p) => ({ label: p.label, income: Number(p.incomeCents) / 100, expenses: Number(p.expensesCents) / 100, profit: Number(p.profitCents) / 100 }))}
             xKey="label"
@@ -134,7 +134,7 @@ export default async function BooksOverviewPage({ params, searchParams }: { para
             ]}
           />
         </Card>
-        <Card title="Where the money goes" description="Biggest costs this year" icon={PieChart}>
+        <Card title="Where the money goes" description="Biggest costs this year" icon={ChartPieSlice}>
           {expenseSlices.length ? (
             <>
               <Donut data={expenseSlices} />
@@ -160,7 +160,7 @@ export default async function BooksOverviewPage({ params, searchParams }: { para
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-medium text-muted">{r.label}</span>
                 <Badge tone={toneBadge[r.tone]} dot>
-                  {r.tone === "good" ? "Good" : r.tone === "watch" ? "Watch" : r.tone === "risk" ? "Risk" : "—"}
+                  {r.tone === "good" ? "Good" : r.tone === "watch" ? "Watch" : r.tone === "risk" ? "Risk" : "-"}
                 </Badge>
               </div>
               <p className="mt-1.5 font-display text-xl font-semibold tabular text-ink">{formatRatio(r)}</p>
@@ -171,7 +171,7 @@ export default async function BooksOverviewPage({ params, searchParams }: { para
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card title="Top accounts this year" icon={Activity} actions={<Link href={`/books/${clientId}/reports?r=tb`} className="text-xs font-medium text-brand-text hover:underline">Trial balance</Link>}>
+        <Card title="Top accounts this year" icon={Pulse} actions={<Link href={`/books/${clientId}/reports?r=tb`} className="text-xs font-medium text-brand-text hover:underline">Trial balance</Link>}>
           <ul className="divide-y divide-line text-sm">
             {[...s.periodRows]
               .filter((r) => r.debitCents !== 0n || r.creditCents !== 0n)

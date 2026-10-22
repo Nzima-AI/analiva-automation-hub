@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
-import type { LucideIcon } from "lucide-react";
+import type { Icon } from "@phosphor-icons/react";
+import { CountUp } from "@/components/motion/count-up";
 
 export function cx(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(" ");
@@ -9,10 +10,10 @@ export function cx(...parts: Array<string | false | null | undefined>): string {
 // ---------------------------------------------------------------- buttons
 
 const buttonBase =
-  "inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]";
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] disabled:opacity-50 disabled:pointer-events-none active:translate-y-px active:scale-[0.98]";
 const buttonSizes = { sm: "h-8 px-3 text-xs", md: "h-9 px-3.5", lg: "h-11 px-5 text-[15px]" };
 const buttonVariants = {
-  primary: "bg-gradient-to-b from-brand to-brand-strong text-white shadow-sm hover:from-brand-strong hover:to-brand-deep",
+  primary: "btn-sheen bg-gradient-to-b from-brand to-brand-strong text-white shadow-[0_1px_0_rgb(255_255_255/0.25)_inset,0_6px_16px_-6px_rgb(0_134_195/0.6)] hover:from-brand-strong hover:to-brand-deep hover:shadow-[0_1px_0_rgb(255_255_255/0.25)_inset,0_10px_22px_-8px_rgb(0_134_195/0.7)]",
   secondary: "border border-line bg-panel text-ink shadow-xs hover:bg-subtle hover:border-line-strong",
   danger: "border border-danger/30 bg-panel text-danger hover:bg-danger-soft",
   ghost: "text-muted hover:text-ink hover:bg-subtle",
@@ -81,14 +82,14 @@ export function Card({
 }: {
   title?: ReactNode;
   description?: ReactNode;
-  icon?: LucideIcon;
+  icon?: Icon;
   actions?: ReactNode;
   children: ReactNode;
   className?: string;
   padded?: boolean;
 }) {
   return (
-    <section className={cx("rounded-2xl border border-line bg-panel shadow-xs", className)}>
+    <section data-reveal data-spotlight className={cx("rounded-2xl border border-line bg-panel shadow-xs transition-[border-color,box-shadow] duration-500 hover:border-line-strong hover:shadow-sm", className)}>
       {title || actions ? (
         <header className="flex items-start justify-between gap-4 border-b border-line px-5 py-3.5">
           <div className="flex min-w-0 items-start gap-2.5">
@@ -130,7 +131,7 @@ export function StatCard({
   label: string;
   value: ReactNode;
   hint?: ReactNode;
-  icon?: LucideIcon;
+  icon?: Icon;
   tone?: keyof typeof statTones;
   href?: string;
   trend?: { value: string; up: boolean; good: boolean } | null;
@@ -141,7 +142,9 @@ export function StatCard({
         <span className="text-[13px] font-medium text-muted">{label}</span>
         {Icon ? <Icon className="h-4 w-4 text-faint" aria-hidden /> : null}
       </div>
-      <div className={cx("mt-2 font-display text-2xl font-semibold tracking-tight tabular", statTones[tone])}>{value}</div>
+      <div className={cx("mt-2 font-display text-[26px] font-semibold leading-none tracking-tight tabular", statTones[tone])}>
+        {typeof value === "string" || typeof value === "number" ? <CountUp value={String(value)} /> : value}
+      </div>
       <div className="mt-1 flex items-center gap-2 text-xs text-muted">
         {trend ? (
           <span className={cx("rounded-md px-1.5 py-0.5 font-medium", trend.good ? "bg-positive-soft text-positive" : "bg-danger-soft text-danger")}>
@@ -152,13 +155,15 @@ export function StatCard({
       </div>
     </>
   );
-  const cls = "block rounded-2xl border border-line bg-panel p-4 shadow-xs transition-all";
+  const cls = "block rounded-2xl border border-line bg-panel p-4 shadow-xs transition-all duration-500 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]";
   return href ? (
-    <Link href={href} className={cx(cls, "hover:-translate-y-px hover:border-line-strong hover:shadow-md")}>
+    <Link href={href} data-reveal data-spotlight className={cx(cls, "hover:-translate-y-0.5 hover:border-line-strong hover:shadow-md")}>
       {body}
     </Link>
   ) : (
-    <div className={cls}>{body}</div>
+    <div data-reveal data-spotlight className={cls}>
+      {body}
+    </div>
   );
 }
 
@@ -182,10 +187,10 @@ export function Badge({ tone = "neutral", children, dot }: { tone?: BadgeTone; c
 
 export function PageHeader({ title, subtitle, actions, eyebrow }: { title: string; subtitle?: ReactNode; actions?: ReactNode; eyebrow?: ReactNode }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div data-reveal className="mb-7 flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
-        {eyebrow ? <div className="mb-1 text-xs font-medium uppercase tracking-wide text-brand-text">{eyebrow}</div> : null}
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink">{title}</h1>
+        {eyebrow ? <div className="mb-1.5 text-[13px] font-medium text-brand-text">{eyebrow}</div> : null}
+        <h1 className="font-display text-[28px] font-semibold leading-tight tracking-tight text-ink">{title}</h1>
         {subtitle ? <div className="mt-1 text-sm text-muted">{subtitle}</div> : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
@@ -203,7 +208,7 @@ export function Notice({ tone = "danger", children }: { tone?: "danger" | "brand
   return <div className={cx("mb-4 rounded-xl border px-4 py-3 text-sm", tones[tone])}>{children}</div>;
 }
 
-export function Empty({ children, icon: Icon, action }: { children: ReactNode; icon?: LucideIcon; action?: ReactNode }) {
+export function Empty({ children, icon: Icon, action }: { children: ReactNode; icon?: Icon; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
       {Icon ? (

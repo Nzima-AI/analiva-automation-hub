@@ -36,11 +36,11 @@ export function resolvePeriod(params: { p?: string; from?: string; to?: string }
     const t = params.to ? parseDateRange(params.to) : null;
     const from = f?.from ?? presets[0]!.from;
     const to = t?.to ?? presets[0]!.to;
-    return { key: "custom", label: `${fmt(from)} – ${fmt(new Date(to.getTime() - DAY))}`, from, to };
+    return { key: "custom", label: `${fmt(from)} to ${fmt(new Date(to.getTime() - DAY))}`, from, to };
   }
   return presets.find((p) => p.key === params.p) ?? presets[0]!;
 }
 
 export function describePeriod(p: Period): string {
-  return `${fmt(p.from)} – ${fmt(new Date(p.to.getTime() - DAY))}`;
+  return `${fmt(p.from)} to ${fmt(new Date(p.to.getTime() - DAY))}`;
 }

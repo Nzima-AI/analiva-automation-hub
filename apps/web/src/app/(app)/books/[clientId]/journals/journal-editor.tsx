@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash } from "@phosphor-icons/react";
 import { Button, Field, Input, Select } from "@/components/ui";
 
 interface Line {
@@ -74,7 +74,7 @@ export function JournalEditor({ action, accounts }: { action: (fd: FormData) => 
                 <td className="py-1">
                   {lines.length > 2 ? (
                     <button type="button" onClick={() => setLines((ls) => ls.filter((_, j) => j !== i))} className="rounded p-1.5 text-faint hover:bg-subtle hover:text-danger" aria-label="Remove line">
-                      <Trash2 className="h-4 w-4" />
+                      <Trash className="h-4 w-4" />
                     </button>
                   ) : null}
                 </td>

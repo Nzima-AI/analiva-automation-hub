@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarCheck2, CalendarClock, CircleAlert, ExternalLink } from "lucide-react";
+import { ArrowSquareOut, CalendarCheck, CalendarDots, WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { Badge, Card, Empty, PageHeader, Select, StatCard, cx } from "@/components/ui";
 import { clientDeadlines, type ClientDeadline } from "@/lib/compliance";
 import { formatCalendarDate } from "@/lib/format";
@@ -39,14 +39,14 @@ export default async function CompliancePage({ searchParams }: { searchParams: P
         subtitle="SARS and CIPC dates worked out from each client's tax profile. Typical statutory dates: confirm on eFiling, especially during filing season."
         actions={
           <a href="https://www.sarsefiling.co.za" target="_blank" rel="noopener" className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-text hover:underline">
-            SARS eFiling <ExternalLink className="h-3.5 w-3.5" />
+            SARS eFiling <ArrowSquareOut className="h-3.5 w-3.5" />
           </a>
         }
       />
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <StatCard label="Overdue" value={overdue.length} icon={CircleAlert} tone={overdue.length ? "negative" : "positive"} />
-        <StatCard label="Due in 7 days" value={week.length} icon={CalendarClock} tone={week.length ? "warn" : "neutral"} />
-        <StatCard label="Due in 30 days" value={month.length} icon={CalendarCheck2} hint={`${profiled} client${profiled === 1 ? "" : "s"} with a tax profile`} />
+        <StatCard label="Overdue" value={overdue.length} icon={WarningCircle} tone={overdue.length ? "negative" : "positive"} />
+        <StatCard label="Due in 7 days" value={week.length} icon={CalendarDots} tone={week.length ? "warn" : "neutral"} />
+        <StatCard label="Due in 30 days" value={month.length} icon={CalendarCheck} hint={`${profiled} client${profiled === 1 ? "" : "s"} with a tax profile`} />
       </div>
 
       <form className="mb-4 flex flex-wrap items-center gap-2">
@@ -67,7 +67,7 @@ export default async function CompliancePage({ searchParams }: { searchParams: P
 
       {groups.size === 0 ? (
         <Card>
-          <Empty icon={CalendarClock}>
+          <Empty icon={CalendarDots}>
             Nothing due. Deadlines appear once clients have a tax profile: open a client, choose <strong>Edit</strong>, and set VAT, PAYE, year-end and incorporation date.
           </Empty>
         </Card>

@@ -89,7 +89,7 @@ export function deadlinesBetween(profile: TaxProfile, from: Date, to: Date): Dea
           (profile.vatCategory === "B" && (m0 + 1) % 2 === 1);
         if (endsPeriod) {
           const label =
-            profile.vatCategory === "C" ? `${MONTHS[m0]} ${y}` : `${MONTHS[(m0 + 11) % 12]}–${MONTHS[m0]} ${y}`;
+            profile.vatCategory === "C" ? `${MONTHS[m0]} ${y}` : `${MONTHS[(m0 + 11) % 12]}-${MONTHS[m0]} ${y}`;
           // eFiling: last business day of the following month.
           push("VAT201", ym(y, m0), label, lastBusinessDay(nextY, nextM));
         }
@@ -101,8 +101,8 @@ export function deadlinesBetween(profile: TaxProfile, from: Date, to: Date): Dea
     }
 
     if (profile.payeRegistered) {
-      push("EMP501", `${y}-interim`, `Interim (Mar–Aug ${y})`, utc(y, 9, 31));
-      push("EMP501", `${y}-annual`, `Annual (Mar ${y - 1}–Feb ${y})`, utc(y, 4, 31));
+      push("EMP501", `${y}-interim`, `Interim (Mar-Aug ${y})`, utc(y, 9, 31));
+      push("EMP501", `${y}-annual`, `Annual (Mar ${y - 1} to Feb ${y})`, utc(y, 4, 31));
     }
 
     // Financial year ending in month fye of year y.

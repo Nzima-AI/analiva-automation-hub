@@ -107,7 +107,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
                     {i.client.name}
                   </Link>
                 </Td>
-                <Td>{i.supplier?.name ?? "—"}</Td>
+                <Td>{i.supplier?.name ?? "-"}</Td>
                 <Td className="tabular whitespace-nowrap text-right">{formatCents(i.totalCents, i.currency)}</Td>
                 <Td>
                   <InvoiceStatusBadge status={i.status} />

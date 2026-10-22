@@ -7,12 +7,13 @@ import { requireSession } from "@/lib/session";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, practice, ctx, db } = await requireSession();
   const staff = isPracticeRole(ctx.role);
-  const [waiting, bankToCode] = staff
+  const [waiting, bankToCode, enquiriesWaiting] = staff
     ? await Promise.all([
         db.capture.count({ where: { status: { in: ["NEEDS_CLIENT", "SUGGESTED", "NEEDS_REVIEW", "FAILED"] } } }),
         db.bankTransaction.count({ where: { status: "UNMATCHED" } }),
+        db.enquiry.count({ where: { status: "OPEN" } }),
       ])
-    : [0, 0];
+    : [0, 0, await db.enquiry.count({ where: { status: "AWAITING_CLIENT" } })];
 
   const sections: NavSection[] = staff
     ? [
@@ -21,6 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           items: [
             { href: "/", label: "Dashboard", icon: "dashboard", exact: true },
             { href: "/review", label: "Review queue", icon: "review", badge: waiting },
+            { href: "/enquiries", label: "Enquiries", icon: "enquiries", badge: enquiriesWaiting },
             { href: "/inbox", label: "Inbox", icon: "inbox" },
             { href: "/compliance", label: "Deadlines", icon: "deadlines" },
           ],
@@ -49,7 +51,24 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           ],
         },
       ]
-    : [{ title: "My business", items: [{ href: `/clients/${ctx.clientId}`, label: "Overview", icon: "clients" }] }];
+    : [
+        {
+          title: "My business",
+          items: [
+            { href: "/portal", label: "Overview", icon: "dashboard", exact: true },
+            { href: "/portal/reports", label: "Reports", icon: "reports" },
+            { href: "/portal/invoices", label: "Invoices", icon: "invoices" },
+            { href: "/portal/documents", label: "Documents", icon: "documents" },
+          ],
+        },
+        {
+          title: "Your accountant",
+          items: [
+            { href: "/portal/enquiries", label: "Enquiries", icon: "enquiries", badge: enquiriesWaiting },
+            { href: "/portal/deadlines", label: "Deadlines", icon: "deadlines" },
+          ],
+        },
+      ];
 
   return (
     <div className="app-backdrop min-h-screen md:flex">

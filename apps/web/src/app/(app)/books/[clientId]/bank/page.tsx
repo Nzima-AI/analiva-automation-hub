@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Landmark, Plus, Sparkles, Upload, Wand2 } from "lucide-react";
+import { Bank, MagicWand, Plus, Sparkle, UploadSimple } from "@phosphor-icons/react/dist/ssr";
 import { ACCOUNT_TYPE_INFO, formatCents, suggestAccountCode, type AccountType } from "@aah/core";
 import { Badge, Button, Card, Empty, Field, Input, Notice, Select } from "@/components/ui";
 import { formatCalendarDate } from "@/lib/format";
@@ -88,7 +88,7 @@ export default async function BankPage({
       {sp.error ? <Notice>{sp.error}</Notice> : null}
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card title="Import a bank statement" description="CSV from FNB, ABSA, Standard Bank, Nedbank, Capitec and most others" icon={Upload} className="lg:col-span-2">
+        <Card title="Import a bank statement" description="CSV from FNB, ABSA, Standard Bank, Nedbank, Capitec and most others" icon={UploadSimple} className="lg:col-span-2">
           <form action={importBankStatement.bind(null, clientId)} className="flex flex-wrap items-end gap-3">
             {bankAccounts.length > 1 ? (
               <Field label="Account" className="min-w-48">
@@ -113,14 +113,14 @@ export default async function BankPage({
               />
             </Field>
             <Button type="submit">
-              <Upload className="h-4 w-4" /> Import
+              <UploadSimple className="h-4 w-4" /> Import
             </Button>
           </form>
           <p className="mt-3 text-xs text-faint">
             Re-importing an overlapping period is safe: lines already imported are skipped. Payments are matched to captured invoices by amount and reference, then your rules code the rest.
           </p>
         </Card>
-        <Card title="Bank accounts" icon={Landmark}>
+        <Card title="Bank accounts" icon={Bank}>
           {bankAccounts.length === 0 ? <p className="text-sm text-muted">The first import creates the main current account.</p> : null}
           <ul className="space-y-2 text-sm">
             {bankAccounts.map((b) => (
@@ -159,13 +159,13 @@ export default async function BankPage({
 
       <Card
         title="Bank lines"
-        icon={Sparkles}
+        icon={Sparkle}
         padded={false}
         actions={
           count("UNMATCHED") ? (
             <form action={runAutoCoding.bind(null, clientId)}>
               <Button variant="secondary" size="sm">
-                <Wand2 className="h-3.5 w-3.5" /> Run auto-coding
+                <MagicWand className="h-3.5 w-3.5" /> Run auto-coding
               </Button>
             </form>
           ) : undefined
@@ -184,7 +184,7 @@ export default async function BankPage({
           ))}
         </div>
         {txns.length === 0 ? (
-          <Empty icon={Landmark}>{filter === "UNMATCHED" ? "Nothing to code. Import a statement to bring in new lines." : "No lines here."}</Empty>
+          <Empty icon={Bank}>{filter === "UNMATCHED" ? "Nothing to code. Import a statement to bring in new lines." : "No lines here."}</Empty>
         ) : (
           <ul className="divide-y divide-line">
             {txns.map((t) => {
@@ -294,7 +294,7 @@ export default async function BankPage({
       </Card>
 
       {rules.length ? (
-        <Card title="Coding rules" description="Applied automatically to new bank lines. Client rules win over practice-wide rules." icon={Wand2}>
+        <Card title="Coding rules" description="Applied automatically to new bank lines. Client rules win over practice-wide rules." icon={MagicWand}>
           <ul className="grid gap-2 text-sm sm:grid-cols-2">
             {rules.map((r) => (
               <li key={r.id} className="flex items-center justify-between gap-2 rounded-lg border border-line px-3 py-2">

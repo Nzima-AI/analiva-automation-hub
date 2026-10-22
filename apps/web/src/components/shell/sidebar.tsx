@@ -3,42 +3,25 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  Activity,
-  BookOpen,
-  Briefcase,
-  CalendarClock,
-  FileText,
-  FolderOpen,
-  Inbox,
-  LayoutDashboard,
-  ListChecks,
-  LogOut,
-  Menu,
-  Receipt,
-  Search,
-  Settings,
-  Users,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+import { BookOpen, Briefcase, CalendarDots, ChatsCircle, FileText, FolderOpen, GearSix, List, ListChecks, MagnifyingGlass, Pulse, Receipt, SignOut, SquaresFour, Tray, UsersThree, X, type Icon } from "@phosphor-icons/react";
 import { cx } from "@/components/ui";
 
 const ICONS = {
-  dashboard: LayoutDashboard,
+  dashboard: SquaresFour,
   review: ListChecks,
-  inbox: Inbox,
-  deadlines: CalendarClock,
+  inbox: Tray,
+  deadlines: CalendarDots,
   clients: Briefcase,
-  lookup: Search,
+  lookup: MagnifyingGlass,
   invoices: Receipt,
   documents: FolderOpen,
   books: BookOpen,
   reports: FileText,
-  activity: Activity,
-  team: Users,
-  settings: Settings,
-} satisfies Record<string, LucideIcon>;
+  activity: Pulse,
+  team: UsersThree,
+  settings: GearSix,
+  enquiries: ChatsCircle,
+} satisfies Record<string, Icon>;
 export type NavIcon = keyof typeof ICONS;
 
 export interface NavSection {
@@ -73,12 +56,14 @@ export function Sidebar({
                   <Link
                     href={item.href}
                     className={cx(
-                      "group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
-                      active ? "bg-brand-soft font-medium text-brand-text" : "text-ink-2 hover:bg-subtle hover:text-ink",
+                      "group relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]",
+                      active
+                        ? "bg-brand-soft font-medium text-brand-text before:absolute before:-left-3 before:top-2 before:bottom-2 before:w-[3px] before:rounded-r-full before:bg-brand"
+                        : "text-ink-2 hover:translate-x-0.5 hover:bg-subtle hover:text-ink",
                     )}
                     aria-current={active ? "page" : undefined}
                   >
-                    <Icon className={cx("h-4 w-4 shrink-0", active ? "text-brand-text" : "text-faint group-hover:text-muted")} aria-hidden />
+                    <Icon weight={active ? "fill" : "regular"} className={cx("h-[18px] w-[18px] shrink-0 transition-colors", active ? "text-brand-text" : "text-faint group-hover:text-muted")} aria-hidden />
                     <span className="flex-1 truncate">{item.label}</span>
                     {item.badge ? (
                       <span className="rounded-full bg-brand px-1.5 py-px text-[11px] font-semibold text-white tabular">{item.badge > 99 ? "99+" : item.badge}</span>
@@ -122,7 +107,7 @@ export function Sidebar({
         </div>
         <form action="/auth/signout" method="post">
           <button className="rounded-md p-1.5 text-faint hover:bg-subtle hover:text-ink" aria-label="Sign out" title="Sign out">
-            <LogOut className="h-4 w-4" />
+            <SignOut className="h-4 w-4" />
           </button>
         </form>
       </div>
@@ -134,7 +119,7 @@ export function Sidebar({
       {/* Mobile top bar */}
       <div className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-panel/90 px-4 py-2 backdrop-blur md:hidden">
         <button onClick={() => setOpen(true)} className="rounded-lg p-2 text-ink-2 hover:bg-subtle" aria-label="Open menu">
-          <Menu className="h-5 w-5" />
+          <List className="h-5 w-5" />
         </button>
         <span className="font-display text-sm font-semibold">Analiva Automation Hub</span>
         <span className="w-9" />

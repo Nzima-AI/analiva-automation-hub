@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { InvoiceStatusBadge } from "@/components/status";
-import { Badge, Button, Card, Input, Notice, PageHeader, Select } from "@/components/ui";
+import { Badge, Button, ButtonLink, Card, Input, Notice, PageHeader, Select } from "@/components/ui";
 import { ACCOUNT_TYPE_INFO, type AccountType } from "@aah/core";
 import { formatCalendarDate, formatCents, formatDateTime, humanise } from "@/lib/format";
 import { requireStaff } from "@/lib/session";
@@ -20,10 +20,10 @@ const ISSUE_TEXT: Record<string, string> = {
   UNUSUAL_AMOUNT: "Far outside this supplier's usual amount (more than 3× or less than a third of the average).",
 };
 
-export default async function InvoicePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
+export default async function InvoicePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; sent?: string }> }) {
   const { db } = await requireStaff();
   const { id } = await params;
-  const { error } = await searchParams;
+  const { error, sent } = await searchParams;
   const invoice = await db.invoice.findFirst({
     where: { id, deletedAt: null },
     include: {
@@ -50,14 +50,14 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
   const rows: Array<[string, React.ReactNode]> = [
     ["Client", <Link key="c" href={`/clients/${invoice.client.id}`} className="text-brand hover:underline">{invoice.client.name} ({invoice.client.code})</Link>],
     ["Type", invoice.direction === "PAYABLE" ? "Supplier bill" : "Sales invoice"],
-    ["Supplier / customer", invoice.supplier?.name ?? "—"],
-    ["Their VAT number", invoice.supplier?.vatNumber ?? "—"],
+    ["Supplier / customer", invoice.supplier?.name ?? "-"],
+    ["Their VAT number", invoice.supplier?.vatNumber ?? "-"],
     ["Invoice date", formatCalendarDate(invoice.issueDate)],
     ["Due date", formatCalendarDate(invoice.dueDate)],
     ["Subtotal", formatCents(invoice.subtotalCents, invoice.currency)],
     ["VAT", formatCents(invoice.vatCents, invoice.currency)],
     ["Total", <strong key="t">{formatCents(invoice.totalCents, invoice.currency)}</strong>],
-    ["Description", invoice.description ?? "—"],
+    ["Description", invoice.description ?? "-"],
   ];
 
   return (
@@ -71,6 +71,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
         }
       />
       {error ? <Notice>{error}</Notice> : null}
+      {sent ? <Notice tone="positive">Reminder sent and logged on the client&apos;s record.</Notice> : null}
       {invoice.validationIssues.length > 0 ? (
         <Notice tone="warn">
           <p className="font-medium">Needs review before it can go to Analiva</p>
@@ -104,6 +105,15 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
               <p className="text-sm text-muted">No original linked.</p>
             )}
           </Card>
+
+          {invoice.totalCents - invoice.amountPaidCents > 0n ? (
+            <Card title="Chase payment">
+              <p className="mb-3 text-sm text-muted">Email a payment reminder, in the practice&apos;s name or on the client&apos;s behalf.</p>
+              <ButtonLink href={`/invoices/${invoice.id}/send`} size="sm" className="w-full">
+                Send reminder
+              </ButtonLink>
+            </Card>
+          ) : null}
 
           <Card title="Books">
             <p className="mb-3 flex items-center gap-2 text-sm">

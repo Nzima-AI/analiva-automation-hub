@@ -39,6 +39,13 @@ export const AUDIT_ACTIONS = [
   "ledger_account.created",
   "compliance.filed",
   "books.exported",
+  "enquiry.created",
+  "enquiry.replied",
+  "enquiry.status_changed",
+  "email.sent",
+  "email.failed",
+  "mandate.recorded",
+  "mandate.revoked",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

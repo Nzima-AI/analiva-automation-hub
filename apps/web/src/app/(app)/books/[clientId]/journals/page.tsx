@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen, PenLine } from "lucide-react";
+import { BookOpen, PencilLine } from "@phosphor-icons/react/dist/ssr";
 import { formatCents } from "@aah/core";
 import { Badge, Card, Empty, Notice } from "@/components/ui";
 import { formatCalendarDate, humanise } from "@/lib/format";
@@ -31,7 +31,7 @@ export default async function JournalsPage({ params, searchParams }: { params: P
     <div className="space-y-6">
       {error ? <Notice>{error}</Notice> : null}
       {posted ? <Notice tone="positive">Journal posted.</Notice> : null}
-      <Card title="New journal" description="Adjustments, depreciation, opening balances, accruals. Debits must equal credits." icon={PenLine}>
+      <Card title="New journal" description="Adjustments, depreciation, opening balances, accruals. Debits must equal credits." icon={PencilLine}>
         <JournalEditor action={postManualJournal.bind(null, clientId)} accounts={accounts} />
       </Card>
 

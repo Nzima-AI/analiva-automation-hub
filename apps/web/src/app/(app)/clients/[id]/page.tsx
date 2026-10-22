@@ -1,17 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Bot, BookOpen, CalendarClock, FileText, FolderOpen, Landmark, Receipt, Settings2, TrendingDown, TrendingUp, Users } from "lucide-react";
+import { Bank, BookOpen, CalendarDots, EnvelopeSimple, FileText, FolderOpen, Receipt, Robot, Signature, SlidersHorizontal, TrendDown, TrendUp, UsersThree } from "@phosphor-icons/react/dist/ssr";
 import { balanceSheet, formatCents, incomeStatement, isPracticeRole, SERVICES } from "@aah/core";
 import { DocumentTable } from "@/components/document-table";
 import { DocumentUpload } from "@/components/document-upload";
 import { InvoiceStatusBadge } from "@/components/status";
-import { Badge, Button, ButtonLink, Card, Empty, Field, Input, Notice, PageHeader, Select, StatCard, Table, Td } from "@/components/ui";
+import { Badge, Button, ButtonLink, Card, Empty, Field, Input, Notice, PageHeader, Select, StatCard, Table, Td, Toggle } from "@/components/ui";
 import { accountTotals, financialYearStart } from "@/lib/books/ledger";
 import { clientDeadlines } from "@/lib/compliance";
 import { serverEnv } from "@/lib/env";
 import { formatCalendarDate, formatDateTime, humanise } from "@/lib/format";
 import { requireSession } from "@/lib/session";
 import { addContact, deleteContact, toggleService, updateCaptureSettings } from "../actions";
+import { recordMandate, revokeMandate, updateClientSharing } from "../../communications/actions";
+import { activeMandate } from "@aah/core";
 
 export const metadata = { title: "Client" };
 
@@ -21,12 +23,12 @@ const MODE_TEXT = {
   NEVER_REVIEW: { label: "Never review", hint: "Filed as soon as the client, total, number and date are read. Duplicates still wait.", tone: "positive" },
 } as const;
 
-export default async function ClientPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; saved?: string }> }) {
+export default async function ClientPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; saved?: string; sent?: string }> }) {
   const { db, ctx } = await requireSession();
   const staff = isPracticeRole(ctx.role);
   const owner = ctx.role === "OWNER";
   const { id } = await params;
-  const { error, saved } = await searchParams;
+  const { error, saved, sent } = await searchParams;
 
   const client = await db.client.findFirst({
     where: { id, deletedAt: null },
@@ -38,6 +40,13 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
   const fyStart = financialYearStart(today, client.financialYearEndMonth);
   const tomorrow = new Date(today.getTime() + 86_400_000);
 
+  const [mandates, emails] = staff
+    ? await Promise.all([
+        db.mandate.findMany({ where: { clientId: client.id }, orderBy: { signedAt: "desc" } }),
+        db.outboundEmail.findMany({ where: { clientId: client.id }, orderBy: { createdAt: "desc" }, take: 8 }),
+      ])
+    : [[], []];
+  const current = activeMandate(mandates);
   const [invoices, invoiceCount, documents, activity, yearRows, allRows, waiting, deadlines, unmatched] = await Promise.all([
     db.invoice.findMany({ where: { clientId: client.id, deletedAt: null }, orderBy: { issueDate: "desc" }, take: 10, include: { supplier: { select: { name: true } } } }),
     db.invoice.count({ where: { clientId: client.id, deletedAt: null } }),
@@ -70,7 +79,7 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
             {client.vatRegistered ? <Badge tone="brand">VAT cat. {client.vatCategory ?? "?"}</Badge> : <Badge>Not VAT registered</Badge>}
             {staff ? (
               <Badge tone={mode.tone}>
-                <Bot className="h-3 w-3" /> {mode.label}
+                <Robot className="h-3 w-3" /> {mode.label}
               </Badge>
             ) : null}
           </span>
@@ -81,8 +90,11 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
               <ButtonLink href={`/books/${client.id}`} variant="secondary">
                 <BookOpen className="h-4 w-4" /> Books & reports
               </ButtonLink>
+              <ButtonLink href={`/clients/${client.id}/email`} variant="secondary">
+                <EnvelopeSimple className="h-4 w-4" /> Email
+              </ButtonLink>
               <ButtonLink href={`/clients/${client.id}/edit`} variant="secondary">
-                <Settings2 className="h-4 w-4" /> Edit
+                <SlidersHorizontal className="h-4 w-4" /> Edit
               </ButtonLink>
               <ButtonLink href={`/invoices/new?client=${client.id}`}>
                 <Receipt className="h-4 w-4" /> Capture invoice
@@ -93,10 +105,13 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
       />
       {error ? <Notice>{error}</Notice> : null}
       {saved === "capture" ? <Notice tone="positive">Review settings saved.</Notice> : null}
+      {saved === "mandate" ? <Notice tone="positive">Mandate recorded. Emails can now go out in this client&apos;s name.</Notice> : null}
+      {saved === "sharing" ? <Notice tone="positive">Portal and sender settings saved.</Notice> : null}
+      {sent ? <Notice tone="positive">Email sent and logged below.</Notice> : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Income this financial year" value={formatCents(is.totals.salesCents + is.totals.otherIncomeCents)} icon={TrendingUp} hint={`Since ${formatCalendarDate(fyStart)}`} href={staff ? `/books/${client.id}/reports?r=is` : undefined} />
-        <StatCard label="Expenses this financial year" value={formatCents(is.totals.costOfSalesCents + is.totals.expensesCents)} icon={TrendingDown} href={staff ? `/books/${client.id}/reports?r=is` : undefined} />
+        <StatCard label="Income this financial year" value={formatCents(is.totals.salesCents + is.totals.otherIncomeCents)} icon={TrendUp} hint={`Since ${formatCalendarDate(fyStart)}`} href={staff ? `/books/${client.id}/reports?r=is` : undefined} />
+        <StatCard label="Expenses this financial year" value={formatCents(is.totals.costOfSalesCents + is.totals.expensesCents)} icon={TrendDown} href={staff ? `/books/${client.id}/reports?r=is` : undefined} />
         <StatCard
           label="Net profit"
           value={formatCents(is.totals.netProfitCents)}
@@ -107,7 +122,7 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
         <StatCard
           label="Bank balance (books)"
           value={formatCents(bs.totals.bankCents)}
-          icon={Landmark}
+          icon={Bank}
           hint={staff && unmatched ? `${unmatched} bank lines to code` : hasBooks ? "Per the ledger" : "No bank statements yet"}
           href={staff ? `/books/${client.id}/bank` : undefined}
           tone={unmatched ? "warn" : "neutral"}
@@ -138,7 +153,7 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
                         i.invoiceNumber
                       )}
                     </Td>
-                    <Td>{i.supplier?.name ?? "—"}</Td>
+                    <Td>{i.supplier?.name ?? "-"}</Td>
                     <Td className="tabular whitespace-nowrap text-right font-medium">{formatCents(i.totalCents, i.currency)}</Td>
                     <Td>
                       <InvoiceStatusBadge status={i.status} />
@@ -148,6 +163,31 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
               </Table>
             )}
           </Card>
+
+          {staff ? (
+            <Card title="Emails sent" icon={EnvelopeSimple} actions={<Link href={`/clients/${client.id}/email`} className="text-xs font-medium text-brand-text hover:underline">New email</Link>}>
+              {emails.length === 0 ? (
+                <p className="text-sm text-muted">No emails sent from the platform yet.</p>
+              ) : (
+                <ul className="divide-y divide-line text-sm">
+                  {emails.map((e) => (
+                    <li key={e.id} className="flex items-start justify-between gap-3 py-2.5">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-ink">{e.subject}</p>
+                        <p className="truncate text-xs text-muted">
+                          To {e.toAddress} as {e.sendAs === "CLIENT" ? `${e.fromName} (on their behalf)` : e.fromName}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <Badge tone={e.status === "SENT" ? "positive" : "danger"}>{e.status === "SENT" ? "Sent" : "Failed"}</Badge>
+                        <p className="mt-0.5 text-[11px] text-faint tabular">{formatDateTime(e.createdAt)}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          ) : null}
 
           <Card title="Documents" icon={FolderOpen}>
             <div className="mb-5">
@@ -159,7 +199,7 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
 
         <div className="space-y-6">
           {staff ? (
-            <Card title="Inbox capture" description="How this client's emailed invoices are filed" icon={Bot}>
+            <Card title="Inbox capture" description="How this client's emailed invoices are filed" icon={Robot}>
               {waiting ? (
                 <Link href="/review" className="mb-4 flex items-center justify-between rounded-lg bg-warn-soft px-3 py-2 text-sm text-warn">
                   {waiting} waiting in the review queue <span aria-hidden>→</span>
@@ -200,7 +240,76 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
           ) : null}
 
           {staff ? (
-            <Card title="Deadlines" icon={CalendarClock} actions={<Link href={`/compliance?client=${client.id}`} className="text-xs font-medium text-brand-text hover:underline">All</Link>}>
+            <Card title="Acting on their behalf" description="Mandate and portal sharing" icon={Signature}>
+              {current ? (
+                <div className="mb-4 rounded-xl border border-positive/25 bg-positive-soft px-3 py-2.5 text-sm">
+                  <p className="font-medium text-positive">Mandate in force</p>
+                  <p className="text-xs text-muted">
+                    Signed by {current.signedBy} on {formatCalendarDate(current.signedAt)}
+                    {current.expiresAt ? `, expires ${formatCalendarDate(current.expiresAt)}` : ", no expiry"}. Covers: {current.scope}.
+                  </p>
+                  {owner ? (
+                    <form action={revokeMandate.bind(null, client.id, current.id)} className="mt-1">
+                      <button className="text-xs text-danger hover:underline">Revoke</button>
+                    </form>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="mb-4 rounded-xl bg-warn-soft px-3 py-2.5 text-sm text-warn">No valid mandate, so emails can only go out in the practice&apos;s name.</p>
+              )}
+              {owner ? (
+                <>
+                  <details className="mb-4">
+                    <summary className="cursor-pointer text-sm font-medium text-brand-text">{current ? "Record a new mandate" : "Record a signed mandate"}</summary>
+                    <form action={recordMandate.bind(null, client.id)} className="mt-3 space-y-3">
+                      <Field label="Signed by">
+                        <Input name="signedBy" required placeholder="Name and role" />
+                      </Field>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Field label="Signed on">
+                          <Input name="signedAt" type="date" required />
+                        </Field>
+                        <Field label="Expires">
+                          <Input name="expiresAt" type="date" />
+                        </Field>
+                      </div>
+                      <Field label="Covers">
+                        <Input name="scope" required defaultValue="Email and documents on the client's behalf" />
+                      </Field>
+                      <Field label="Signed copy">
+                        <Select name="documentId" defaultValue="">
+                          <option value="">Not uploaded</option>
+                          {documents.map((d) => (
+                            <option key={d.id} value={d.id}>
+                              {d.filename}
+                            </option>
+                          ))}
+                        </Select>
+                      </Field>
+                      <Button type="submit" size="sm" className="w-full">
+                        Save mandate
+                      </Button>
+                    </form>
+                  </details>
+                  <form action={updateClientSharing.bind(null, client.id)} className="space-y-3 border-t border-line pt-4">
+                    <Field label="Reminders and statements are sent as">
+                      <Select name="defaultSendAs" defaultValue={client.defaultSendAs}>
+                        <option value="PRACTICE">The practice</option>
+                        <option value="CLIENT">The client, on their behalf</option>
+                      </Select>
+                    </Field>
+                    <Toggle name="portalShowsBooks" defaultChecked={client.portalShowsBooks} label="Show books in the client portal" hint="Statements, ratios and charts for their logins." />
+                    <Button type="submit" size="sm" variant="secondary" className="w-full">
+                      Save
+                    </Button>
+                  </form>
+                </>
+              ) : null}
+            </Card>
+          ) : null}
+
+          {staff ? (
+            <Card title="Deadlines" icon={CalendarDots} actions={<Link href={`/compliance?client=${client.id}`} className="text-xs font-medium text-brand-text hover:underline">All</Link>}>
               {openDeadlines.length === 0 ? (
                 <p className="text-sm text-muted">Nothing due. Set the tax profile under Edit to fill this in.</p>
               ) : (
@@ -219,7 +328,7 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
             </Card>
           ) : null}
 
-          <Card title="Profile" icon={Users}>
+          <Card title="Profile" icon={UsersThree}>
             <dl className="space-y-2 text-sm">
               {(
                 [
@@ -233,7 +342,7 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
               ).map(([label, value]) => (
                 <div key={label} className="flex justify-between gap-3">
                   <dt className="text-muted">{label}</dt>
-                  <dd className="truncate text-right tabular text-ink">{value ?? "—"}</dd>
+                  <dd className="truncate text-right tabular text-ink">{value ?? "-"}</dd>
                 </div>
               ))}
             </dl>
@@ -267,7 +376,7 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
             </div>
           </Card>
 
-          <Card title="Contacts" icon={Users}>
+          <Card title="Contacts" icon={UsersThree}>
             {client.contacts.length === 0 ? <p className="text-sm text-muted">No contacts yet.</p> : null}
             <ul className="space-y-3">
               {client.contacts.map((c) => (

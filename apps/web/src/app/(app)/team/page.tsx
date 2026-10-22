@@ -30,7 +30,7 @@ export default async function TeamPage() {
               <Td>
                 <Badge tone={u.role === "OWNER" ? "brand" : "neutral"}>{humanise(u.role)}</Badge>
               </Td>
-              <Td>{u.client?.name ?? "—"}</Td>
+              <Td>{u.client?.name ?? "-"}</Td>
               <Td className="tabular whitespace-nowrap">{formatDate(u.createdAt)}</Td>
               <Td className="text-right">
                 {u.id !== ctx.userId ? (

@@ -144,8 +144,8 @@ describe("compliance", () => {
       d("2026-12-01"),
     ).filter((x) => x.type === "VAT201");
     expect(due.map((x) => [x.periodLabel, x.dueDate.toISOString().slice(0, 10)])).toEqual([
-      ["Jul–Aug 2026", "2026-09-30"],
-      ["Sep–Oct 2026", "2026-11-30"],
+      ["Jul-Aug 2026", "2026-09-30"],
+      ["Sep-Oct 2026", "2026-11-30"],
     ]);
   });
 

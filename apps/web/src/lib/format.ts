@@ -15,15 +15,15 @@ const dateTimeFmt = new Intl.DateTimeFormat("en-ZA", {
 const calendarFmt = new Intl.DateTimeFormat("en-ZA", { timeZone: "UTC", day: "2-digit", month: "short", year: "numeric" });
 
 export function formatDate(d: Date | null | undefined): string {
-  return d ? dateFmt.format(d) : "—";
+  return d ? dateFmt.format(d) : "-";
 }
 
 export function formatDateTime(d: Date | null | undefined): string {
-  return d ? dateTimeFmt.format(d) : "—";
+  return d ? dateTimeFmt.format(d) : "-";
 }
 
 export function formatCalendarDate(d: Date | null | undefined): string {
-  return d ? calendarFmt.format(d) : "—";
+  return d ? calendarFmt.format(d) : "-";
 }
 
 export function formatBytes(n: number): string {

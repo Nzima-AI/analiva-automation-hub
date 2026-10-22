@@ -148,7 +148,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const ratios = sheet("Ratios", "Financial ratios");
   ratios.addRow(["Ratio", "Value", "Reading"]).font = { bold: true };
-  for (const r of s.ratios) ratios.addRow([r.label, r.value ?? "—", r.hint]);
+  for (const r of s.ratios) ratios.addRow([r.label, r.value ?? "-", r.hint]);
   ratios.getColumn(3).width = 52;
 
   const tbs = sheet("Trial balance", "Trial balance");

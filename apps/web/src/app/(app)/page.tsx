@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, Bot, CalendarClock, Inbox, Landmark, ListChecks, Receipt, Sparkles } from "lucide-react";
+import { ArrowRight, Bank, CalendarDots, ListChecks, Receipt, Robot, Sparkle, Tray, Warning } from "@phosphor-icons/react/dist/ssr";
 import { formatCents } from "@aah/core";
 import { BarList } from "@/components/bar-list";
 import { BarTrend } from "@/components/charts";
@@ -103,8 +103,8 @@ export default async function DashboardPage() {
         <StatCard label="Waiting for review" value={waitingTotal} icon={ListChecks} tone={waitingTotal ? "warn" : "positive"} href="/review" hint={waitingTotal ? "Oldest first" : "Queue is clear"} />
         <StatCard
           label="Filed automatically (30 days)"
-          value={autoRate === null ? "—" : `${autoRate}%`}
-          icon={Bot}
+          value={autoRate === null ? "-" : `${autoRate}%`}
+          icon={Robot}
           tone="brand"
           hint={`${autoFiled} of ${decided.length} filed invoices`}
         />
@@ -116,13 +116,13 @@ export default async function DashboardPage() {
           trend={trend === null ? null : { value: `${Math.abs(trend)}%`, up: trend >= 0, good: trend >= 0 }}
           hint={`${formatCents(invoicesMonth._sum.totalCents ?? 0n)} · VAT ${formatCents(invoicesMonth._sum.vatCents ?? 0n)}`}
         />
-        <StatCard label="Bank lines to code" value={unmatchedBank} icon={Landmark} tone={unmatchedBank ? "warn" : "neutral"} href="/books" hint={`${emails7} emails fetched in 7 days`} />
+        <StatCard label="Bank lines to code" value={unmatchedBank} icon={Bank} tone={unmatchedBank ? "warn" : "neutral"} href="/books" hint={`${emails7} emails fetched in 7 days`} />
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-3">
-        <Card title="Capture activity" description="Last 30 days, by outcome" icon={Sparkles} className="xl:col-span-2">
+        <Card title="Capture activity" description="Last 30 days, by outcome" icon={Sparkle} className="xl:col-span-2">
           {captures30.length === 0 ? (
-            <Empty icon={Inbox}>Nothing captured in the last 30 days. Connect an inbox under Settings → Email accounts.</Empty>
+            <Empty icon={Tray}>Nothing captured in the last 30 days. Connect an inbox under Settings → Email accounts.</Empty>
           ) : (
             <BarTrend
               data={chart}
@@ -138,9 +138,9 @@ export default async function DashboardPage() {
           )}
         </Card>
 
-        <Card title="Deadlines" description="Next 30 days and overdue" icon={CalendarClock} actions={<Link href="/compliance" className="text-xs font-medium text-brand-text hover:underline">All deadlines</Link>}>
+        <Card title="Deadlines" description="Next 30 days and overdue" icon={CalendarDots} actions={<Link href="/compliance" className="text-xs font-medium text-brand-text hover:underline">All deadlines</Link>}>
           {openDeadlines.length === 0 ? (
-            <Empty icon={CalendarClock}>
+            <Empty icon={CalendarDots}>
               No deadlines due. Set each client&apos;s tax profile (VAT, PAYE, year-end) to fill the calendar.
             </Empty>
           ) : (
@@ -203,7 +203,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-3">
-        <Card title="Recent activity" icon={AlertTriangle} className="xl:col-span-2" actions={<Link href="/audit" className="text-xs font-medium text-brand-text hover:underline">Activity log</Link>}>
+        <Card title="Recent activity" icon={Warning} className="xl:col-span-2" actions={<Link href="/audit" className="text-xs font-medium text-brand-text hover:underline">Activity log</Link>}>
           <ol className="space-y-2.5">
             {activity.map((a) => (
               <li key={a.id} className="flex items-baseline justify-between gap-3 text-sm">
@@ -217,7 +217,7 @@ export default async function DashboardPage() {
             ))}
           </ol>
         </Card>
-        <Card title="Practice" icon={Landmark}>
+        <Card title="Practice" icon={Bank}>
           <dl className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <dt className="text-xs text-muted">Active clients</dt>

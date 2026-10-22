@@ -68,8 +68,8 @@ export default async function LookupPage({ searchParams }: { searchParams: Promi
                       {c.tradingName ? <div className="text-xs text-muted">t/a {c.tradingName}</div> : null}
                     </Td>
                     <Td className="tabular">{c.code}</Td>
-                    <Td>{c.contacts[0]?.name ?? "—"}</Td>
-                    <Td className="tabular">{c.phone ?? "—"}</Td>
+                    <Td>{c.contacts[0]?.name ?? "-"}</Td>
+                    <Td className="tabular">{c.phone ?? "-"}</Td>
                     <Td>
                       <Badge>{humanise(c.status)}</Badge>
                     </Td>
@@ -97,7 +97,7 @@ export default async function LookupPage({ searchParams }: { searchParams: Promi
                         {i.client.name}
                       </Link>
                     </Td>
-                    <Td>{i.supplier?.name ?? "—"}</Td>
+                    <Td>{i.supplier?.name ?? "-"}</Td>
                     <Td className="tabular whitespace-nowrap text-right">{formatCents(i.totalCents, i.currency)}</Td>
                     <Td>
                       <InvoiceStatusBadge status={i.status} />

@@ -75,6 +75,9 @@ export const MODEL_OWNERSHIP: Record<string, Ownership> = {
   BankTransaction: "client",
   ComplianceFiling: "client",
   BankRule: "practice",
+  Enquiry: "client",
+  EnquiryMessage: "client",
+  OutboundEmail: "client",
 };
 
 const READ_OPS = new Set([

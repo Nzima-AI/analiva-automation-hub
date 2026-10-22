@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, BookOpen, Briefcase } from "lucide-react";
+import { ArrowRight, BookOpen, Briefcase } from "@phosphor-icons/react/dist/ssr";
 import { Badge, Card, Empty, PageHeader, Table, Td } from "@/components/ui";
 import { formatCalendarDate } from "@/lib/format";
 import { requireStaff } from "@/lib/session";
@@ -41,8 +41,8 @@ export default async function BooksIndexPage() {
                 </Td>
                 <Td>{c.vatRegistered ? <Badge tone="brand">Registered</Badge> : <Badge>No</Badge>}</Td>
                 <Td className="tabular">{count.get(c.id) ?? 0}</Td>
-                <Td className="tabular text-muted">{last.get(c.id) ? formatCalendarDate(last.get(c.id)!) : "—"}</Td>
-                <Td>{u.get(c.id) ? <Badge tone="warn">{u.get(c.id)} to code</Badge> : <span className="text-faint">—</span>}</Td>
+                <Td className="tabular text-muted">{last.get(c.id) ? formatCalendarDate(last.get(c.id)!) : "-"}</Td>
+                <Td>{u.get(c.id) ? <Badge tone="warn">{u.get(c.id)} to code</Badge> : <span className="text-faint">-</span>}</Td>
                 <Td className="text-right">
                   <Link href={`/books/${c.id}`} className="inline-flex items-center gap-1 text-sm font-medium text-brand-text hover:underline">
                     Open <ArrowRight className="h-3.5 w-3.5" />

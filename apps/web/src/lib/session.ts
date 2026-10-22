@@ -76,6 +76,13 @@ export async function requireSession(): Promise<Session> {
 /** Practice owners and staff only. Client logins are sent to their own workspace. */
 export async function requireStaff(): Promise<Session> {
   const session = await requireSession();
-  if (!isPracticeRole(session.ctx.role)) redirect(`/clients/${session.ctx.clientId}`);
+  if (!isPracticeRole(session.ctx.role)) redirect("/portal");
   return session;
+}
+
+/** Client logins only (CLIENT / CLIENT_STAFF). Staff are sent to the practice dashboard. */
+export async function requireClient(): Promise<Session & { clientId: string }> {
+  const session = await requireSession();
+  if (isPracticeRole(session.ctx.role) || !session.ctx.clientId) redirect("/");
+  return { ...session, clientId: session.ctx.clientId };
 }

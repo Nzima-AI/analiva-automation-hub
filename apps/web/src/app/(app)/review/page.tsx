@@ -84,7 +84,7 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
                   </Td>
                   <Td className="max-w-[12rem] truncate">{c.document.filename}</Td>
                   <Td className="text-xs">
-                    <div>{x.supplierName?.value ?? "—"}</div>
+                    <div>{x.supplierName?.value ?? "-"}</div>
                     <div className="text-muted">
                       {x.invoiceNumber?.value ?? "no number"} · {x.total ? formatCents(BigInt(x.total.value)) : "no total"}
                     </div>

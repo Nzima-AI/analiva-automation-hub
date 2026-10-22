@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ListTree, Plus } from "lucide-react";
+import { Plus, TreeStructure } from "@phosphor-icons/react/dist/ssr";
 import { ACCOUNT_TYPE_INFO, ACCOUNT_TYPES, formatCents, natural, type AccountType } from "@aah/core";
 import { Badge, Button, Card, Field, Input, Notice, Select } from "@/components/ui";
 import { accountTotals } from "@/lib/books/ledger";
@@ -22,7 +22,7 @@ export default async function AccountsPage({ params, searchParams }: { params: P
     <div className="grid gap-6 xl:grid-cols-3">
       <div className="xl:col-span-2">
         {error ? <Notice>{error}</Notice> : null}
-        <Card title="Chart of accounts" description="Balances are all-time, in each account's natural sign" icon={ListTree} padded={false}>
+        <Card title="Chart of accounts" description="Balances are all-time, in each account's natural sign" icon={TreeStructure} padded={false}>
           {ACCOUNT_TYPES.map((t: AccountType) => {
             const group = accounts.filter((a) => a.type === t);
             if (!group.length) return null;

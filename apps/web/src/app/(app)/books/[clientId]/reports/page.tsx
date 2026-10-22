@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Download, FileSpreadsheet } from "lucide-react";
+import { DownloadSimple, FileXls } from "@phosphor-icons/react/dist/ssr";
 import { formatCents, natural, trialBalance, vatPeriodRange, type StatementLine } from "@aah/core";
 import { PrintButton } from "@/components/print-button";
 import { Badge, ButtonLink, Card, Empty, Input, Notice, Select, cx } from "@/components/ui";
@@ -95,10 +95,10 @@ export default async function ReportsPage({ params, searchParams }: { params: Pr
         </div>
         <div className="flex gap-2">
           <ButtonLink href={`/books/${clientId}/export?format=xlsx&${exportQs}`} variant="secondary" size="sm" prefetch={false}>
-            <FileSpreadsheet className="h-3.5 w-3.5" /> Excel pack
+            <FileXls className="h-3.5 w-3.5" /> Excel pack
           </ButtonLink>
           <ButtonLink href={`/books/${clientId}/export?format=analiva&${exportQs}`} variant="secondary" size="sm" prefetch={false}>
-            <Download className="h-3.5 w-3.5" /> Analiva ledger
+            <DownloadSimple className="h-3.5 w-3.5" /> Analiva ledger
           </ButtonLink>
         </div>
       </div>
@@ -417,7 +417,7 @@ export default async function ReportsPage({ params, searchParams }: { params: Pr
       where: { clientId, deletedAt: null, status: { not: "REJECTED" } },
       select: { id: true, direction: true, invoiceNumber: true, issueDate: true, dueDate: true, totalCents: true, amountPaidCents: true, supplier: { select: { name: true } } },
     });
-    const buckets = ["Current", "1–30 days", "31–60 days", "61–90 days", "90+ days"] as const;
+    const buckets = ["Current", "1-30 days", "31-60 days", "61-90 days", "90+ days"] as const;
     const bucketOf = (due: Date) => {
       const days = Math.floor((today.getTime() - due.getTime()) / 86_400_000);
       return days <= 0 ? 0 : days <= 30 ? 1 : days <= 60 ? 2 : days <= 90 ? 3 : 4;

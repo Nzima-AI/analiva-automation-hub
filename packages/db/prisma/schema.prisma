@@ -168,6 +168,34 @@ enum RuleDirection {
   ANY
 }
 
+enum SendAs {
+  /// From the practice, in the practice's name
+  PRACTICE
+  /// White-label: in the client's name (needs a valid mandate)
+  CLIENT
+}
+
+enum EnquiryStatus {
+  OPEN
+  AWAITING_CLIENT
+  RESOLVED
+}
+
+enum EnquiryCategory {
+  GENERAL
+  INVOICES
+  TAX
+  PAYROLL
+  CIPC
+  DOCUMENTS
+  REPORTS
+}
+
+enum OutboundStatus {
+  SENT
+  FAILED
+}
+
 enum ActorType {
   USER
   SYSTEM
@@ -212,6 +240,9 @@ model Practice {
   bankTransactions BankTransaction[]
   bankRules    BankRule[]
   filings      ComplianceFiling[]
+  enquiries    Enquiry[]
+  enquiryMessages EnquiryMessage[]
+  outboundEmails OutboundEmail[]
 }
 
 model User {
@@ -269,6 +300,11 @@ model Client {
   /// 1-12, month the financial year ends
   financialYearEndMonth Int       @default(2)
   incorporationDate  DateTime?    @db.Date
+  // Portal and outbound email
+  /// Client logins can see their books, statements and ratios
+  portalShowsBooks   Boolean      @default(true)
+  /// Default sender for reminders and statements about this client's invoices
+  defaultSendAs      SendAs       @default(PRACTICE)
   deletedAt          DateTime?
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
@@ -293,6 +329,9 @@ model Client {
   bankTransactions BankTransaction[]
   bankRules BankRule[]
   filings   ComplianceFiling[]
+  enquiries Enquiry[]
+  enquiryMessages EnquiryMessage[]
+  outboundEmails OutboundEmail[]
 
   @@unique([practiceId, code])
   @@index([practiceId, status])
@@ -839,4 +878,80 @@ model ComplianceFiling {
   client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@unique([clientId, periodKey])
+}
+
+/// A question or request between a client and the practice.
+model Enquiry {
+  id               String          @id @default(cuid())
+  practiceId       String
+  clientId         String
+  subject          String
+  category         EnquiryCategory @default(GENERAL)
+  status           EnquiryStatus   @default(OPEN)
+  createdByUserId  String?
+  assignedToUserId String?
+  /// Last message from either side, for sorting and "unread" cues
+  lastMessageAt    DateTime        @default(now())
+  lastMessageFrom  String          @default("CLIENT")
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  practice Practice         @relation(fields: [practiceId], references: [id])
+  client   Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  messages EnquiryMessage[]
+
+  @@index([practiceId, status, lastMessageAt])
+  @@index([clientId, lastMessageAt])
+}
+
+model EnquiryMessage {
+  id           String   @id @default(cuid())
+  practiceId   String
+  clientId     String
+  enquiryId    String
+  authorUserId String?
+  authorName   String
+  /// PRACTICE or CLIENT
+  authorSide   String
+  body         String
+  /// Practice-only note; never shown to client logins
+  internal     Boolean  @default(false)
+  documentId   String?
+  createdAt    DateTime @default(now())
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+  client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  enquiry  Enquiry  @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+
+  @@index([enquiryId, createdAt])
+}
+
+/// Every email the platform sends, and in whose name.
+model OutboundEmail {
+  id            String         @id @default(cuid())
+  practiceId    String
+  clientId      String
+  invoiceId     String?
+  sendAs        SendAs
+  mandateId     String?
+  mailAccountId String?
+  kind          String
+  fromName      String
+  fromAddress   String
+  replyTo       String?
+  toAddress     String
+  cc            String?
+  subject       String
+  bodyText      String
+  status        OutboundStatus
+  error         String?
+  messageId     String?
+  sentByUserId  String?
+  createdAt     DateTime       @default(now())
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+  client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, createdAt])
+  @@index([invoiceId])
 }

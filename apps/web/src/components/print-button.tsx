@@ -1,6 +1,6 @@
 "use client";
 
-import { Printer } from "lucide-react";
+import { Printer } from "@phosphor-icons/react";
 
 export function PrintButton() {
   return (

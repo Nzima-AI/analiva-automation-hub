@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { ArrowRight, CornerDownLeft, Search } from "lucide-react";
+import { ArrowBendDownLeft, ArrowRight, MagnifyingGlass } from "@phosphor-icons/react";
 import { cx } from "@/components/ui";
 import { quickSearch, type CommandResult } from "./command-actions";
 
@@ -90,7 +90,7 @@ export function CommandBar() {
         onClick={() => setOpen(true)}
         className="no-print flex h-9 w-full max-w-md items-center gap-2 rounded-lg border border-line bg-panel px-3 text-sm text-faint shadow-xs transition-colors hover:border-line-strong hover:text-muted"
       >
-        <Search className="h-4 w-4" />
+        <MagnifyingGlass className="h-4 w-4" />
         <span className="flex-1 text-left">Search clients, invoices, amounts…</span>
         <kbd className="hidden rounded border border-line bg-subtle px-1.5 font-sans text-[11px] text-muted sm:inline">Ctrl K</kbd>
       </button>
@@ -100,7 +100,7 @@ export function CommandBar() {
           <button className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={() => setOpen(false)} aria-label="Close" />
           <div className="fade-in relative w-full max-w-xl overflow-hidden rounded-2xl border border-line bg-panel shadow-lg">
             <div className="flex items-center gap-3 border-b border-line px-4">
-              <Search className="h-4 w-4 text-faint" />
+              <MagnifyingGlass className="h-4 w-4 text-faint" />
               <input
                 ref={inputRef}
                 value={q}
@@ -144,7 +144,7 @@ export function CommandBar() {
                         <span className="block truncate text-sm text-ink">{item.label}</span>
                         {item.detail ? <span className="block truncate text-xs text-muted">{item.detail}</span> : null}
                       </span>
-                      {i === active ? <CornerDownLeft className="h-3.5 w-3.5 text-brand-text" /> : <ArrowRight className="h-3.5 w-3.5 text-faint opacity-0" />}
+                      {i === active ? <ArrowBendDownLeft className="h-3.5 w-3.5 text-brand-text" /> : <ArrowRight className="h-3.5 w-3.5 text-faint opacity-0" />}
                     </button>
                   </li>
                 );
