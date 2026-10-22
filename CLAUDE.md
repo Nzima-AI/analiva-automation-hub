@@ -228,18 +228,18 @@ Work through these in order. Finish and test each phase before the next.
 - Invoice extraction, validation, duplicate detection, review queue.
 - Mock Analiva connector, then import-file connector.
 
-**Phase 3: Outbound and white label**
+**Phase 3: Outbound and white label** — send-as-practice/client with mandates built 2026-10-23 (per-client SMTP domains still to do)
 - Mandates, branded template engine, category templates with multiple designs.
 - Send on behalf of clients with per-client sender setup.
 
-**Phase 4: Onboarding platform and automation**
+**Phase 4: Onboarding platform and automation** — client portal and enquiries built 2026-10-23; automation builder still to do
 - Client workspace templates, service switches, intake forms, portal.
 - Admin interface and visual automation builder; core email sequences.
 
 **Phase 5: API and webhooks**
 - Public API, keys, scopes, OpenAPI docs, signed webhooks, delivery log, developer portal.
 
-**Phase 6: Launch journey and premium**
+**Phase 6: Launch journey and premium** — books, statements, VAT201, deadline calendar built early (2026-10-23)
 - Launch stages, projects, brand asset library, deadline calendar, monthly snapshot, client success dashboard.
 - WhatsApp capture, bank matching, concierge assistant, packages and feature switches.
 
@@ -282,4 +282,4 @@ Work through these in order. Finish and test each phase before the next.
 
 ## 16. Next task for Claude
 
-Tune Phase 2 on real invoices (review queue corrections feed supplier profiles). Then Phase 3: outbound and white label. Still open: Analiva's import format (CSV export columns are a placeholder).
+Live checks before every deploy (from apps/web): `scripts/e2e-books.ts` and `scripts/e2e-pages.ts` (demo practice only). Open items: Phase 5 public API and webhooks; automation sequences (Phase 4); per-client sending domains; scanned-PDF OCR; Analiva confirming the ledger CSV import.

@@ -89,8 +89,14 @@ for (const path of ["/portal", "/portal/reports", "/portal/reports?r=bs", "/port
 // Client logins must be kept out of practice pages.
 for (const path of ["/", "/clients", "/books", "/enquiries", "/settings"]) {
   const res = await fetch(BASE + path, { headers: { cookie: clientCookie }, redirect: "manual" });
-  const ok = res.status === 307 && (res.headers.get("location") ?? "").endsWith("/portal");
-  console.log(`${ok ? "ok  " : "FAIL"}  ${res.status}  [client blocked] ${path} -> ${res.headers.get("location")}`);
+  // Redirects inside streamed pages come back as 200 + a redirect instruction for the browser;
+  // what matters is that no practice data is in the response.
+  const body = res.status === 200 ? await res.text() : "";
+  const redirected = (res.status === 307 && (res.headers.get("location") ?? "").endsWith("/portal")) || /NEXT_REDIRECT[^"]*\/portal|http-equiv="refresh"[^>]*\/portal/.test(body);
+  const leaked = /Mokoena|Ubuntu Bakery|Naidoo|Karoo Craft|Ndlovu Consulting/.test(body.replace(/Mokoena Plumbing/g, ""));
+  if (process.env.DEBUG_BLOCK) console.log(body.slice(0, 1500));
+  const ok = redirected && !leaked;
+  console.log(`${ok ? "ok  " : "FAIL"}  ${res.status}  [client blocked] ${path} redirected=${redirected} leaked=${leaked}`);
   if (!ok) failures++;
 }
 console.log(failures ? `${failures} FAILED` : "ALL PAGES OK");
