@@ -3,7 +3,7 @@ import { ArrowRight, Bank, CalendarDots, ChatsCircle, FileArrowUp, Receipt, Tren
 import { formatCents, type Ratio } from "@aah/core";
 import { BarTrend } from "@/components/charts";
 import { EnquiryStatusBadge } from "@/components/enquiry-thread";
-import { Badge, ButtonLink, Card, Empty, PageHeader, StatCard } from "@/components/ui";
+import { Badge, ButtonLink, Card, Empty, Figure, InkPanel, PageHeader, StatCard } from "@/components/ui";
 import { monthlySeries, statementsFor } from "@/lib/books/analytics";
 import { financialYearStart } from "@/lib/books/ledger";
 import { clientDeadlines } from "@/lib/compliance";
@@ -54,19 +54,14 @@ export default async function PortalHome() {
 
       {s ? (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" data-reveal-group>
-            <StatCard label="Income this year" value={formatCents(s.is.totals.salesCents + s.is.totals.otherIncomeCents)} icon={TrendUp} hint={`Since ${formatCalendarDate(fyStart)}`} href="/portal/reports" />
-            <StatCard label="Expenses this year" value={formatCents(s.is.totals.costOfSalesCents + s.is.totals.expensesCents)} icon={TrendDown} href="/portal/reports" />
-            <StatCard
-              label="Net profit"
-              value={formatCents(s.is.totals.netProfitCents)}
-              icon={Wallet}
-              tone={s.is.totals.netProfitCents < 0n ? "negative" : "positive"}
-              hint={s.is.netMarginPct === null ? "No sales yet" : `${s.is.netMarginPct}% of sales`}
-              href="/portal/reports"
-            />
-            <StatCard label="Bank balance" value={formatCents(s.bs.totals.bankCents)} icon={Bank} hint="Per your books" />
-          </div>
+          <InkPanel className="p-6 sm:p-8">
+            <div className="grid gap-8 sm:grid-cols-2 xl:grid-cols-4">
+              <Figure label="Income this year" value={formatCents(s.is.totals.salesCents + s.is.totals.otherIncomeCents)} hint={`Since ${formatCalendarDate(fyStart)}`} />
+              <Figure label="Expenses this year" value={formatCents(s.is.totals.costOfSalesCents + s.is.totals.expensesCents)} />
+              <Figure label="Net profit" value={formatCents(s.is.totals.netProfitCents)} tone={s.is.totals.netProfitCents < 0n ? "down" : "up"} hint={s.is.netMarginPct === null ? "No sales yet" : `${s.is.netMarginPct}% of sales`} />
+              <Figure label="Bank balance" value={formatCents(s.bs.totals.bankCents)} hint="Per your books" />
+            </div>
+          </InkPanel>
           <div className="mt-6 grid gap-6 xl:grid-cols-3">
             <Card title="Income, expenses and profit" description="Last 12 months" icon={TrendUp} className="xl:col-span-2">
               <BarTrend

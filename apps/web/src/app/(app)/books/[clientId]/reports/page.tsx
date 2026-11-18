@@ -143,7 +143,8 @@ export default async function ReportsPage({ params, searchParams }: { params: Pr
     if (r === "is") {
       const t = s.is.totals;
       return (
-        <Card>
+        <Card padded={false}>
+          <div className="paper rounded-2xl py-8 pl-16 pr-8">
           {head}
           <table className="mx-auto w-full max-w-2xl text-sm">
             <tbody>
@@ -157,6 +158,7 @@ export default async function ReportsPage({ params, searchParams }: { params: Pr
               <TotalRow label={`Net profit${s.is.netMarginPct !== null ? ` (${s.is.netMarginPct}%)` : ""}`} c={t.netProfitCents} big />
             </tbody>
           </table>
+          </div>
         </Card>
       );
     }
@@ -168,7 +170,8 @@ export default async function ReportsPage({ params, searchParams }: { params: Pr
         { accountId: "current", code: "", name: "Profit for the current year", amountCents: b.currentYearProfitCents },
       ];
       return (
-        <Card>
+        <Card padded={false}>
+          <div className="paper rounded-2xl py-8 pl-16 pr-8">
           {head}
           {!b.balanced ? <Notice>The balance sheet is out by {formatCents(b.totals.totalAssetsCents - b.totals.liabilitiesAndEquityCents)}. Check the trial balance.</Notice> : null}
           <table className="mx-auto w-full max-w-2xl text-sm">
@@ -182,12 +185,14 @@ export default async function ReportsPage({ params, searchParams }: { params: Pr
               <TotalRow label="Total equity and liabilities" c={b.totals.liabilitiesAndEquityCents} big />
             </tbody>
           </table>
+          </div>
         </Card>
       );
     }
     const c = s.cf;
     return (
-      <Card>
+      <Card padded={false}>
+        <div className="paper rounded-2xl py-8 pl-16 pr-8">
         {head}
         <table className="mx-auto w-full max-w-2xl text-sm">
           <tbody>
@@ -210,6 +215,7 @@ export default async function ReportsPage({ params, searchParams }: { params: Pr
             </tr>
           </tbody>
         </table>
+        </div>
       </Card>
     );
   }

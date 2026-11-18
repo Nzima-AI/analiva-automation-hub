@@ -5,7 +5,7 @@ import { balanceSheet, formatCents, incomeStatement, isPracticeRole, SERVICES } 
 import { DocumentTable } from "@/components/document-table";
 import { DocumentUpload } from "@/components/document-upload";
 import { InvoiceStatusBadge } from "@/components/status";
-import { Badge, Button, ButtonLink, Card, Empty, Field, Input, Notice, PageHeader, Select, StatCard, Table, Td, Toggle } from "@/components/ui";
+import { Badge, Button, ButtonLink, Card, Empty, Field, Figure, InkPanel, Input, Notice, PageHeader, Select, StatCard, Table, Td, Toggle } from "@/components/ui";
 import { accountTotals, financialYearStart } from "@/lib/books/ledger";
 import { clientDeadlines } from "@/lib/compliance";
 import { serverEnv } from "@/lib/env";
@@ -109,25 +109,14 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
       {saved === "sharing" ? <Notice tone="positive">Portal and sender settings saved.</Notice> : null}
       {sent ? <Notice tone="positive">Email sent and logged below.</Notice> : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Income this financial year" value={formatCents(is.totals.salesCents + is.totals.otherIncomeCents)} icon={TrendUp} hint={`Since ${formatCalendarDate(fyStart)}`} href={staff ? `/books/${client.id}/reports?r=is` : undefined} />
-        <StatCard label="Expenses this financial year" value={formatCents(is.totals.costOfSalesCents + is.totals.expensesCents)} icon={TrendDown} href={staff ? `/books/${client.id}/reports?r=is` : undefined} />
-        <StatCard
-          label="Net profit"
-          value={formatCents(is.totals.netProfitCents)}
-          tone={is.totals.netProfitCents < 0n ? "negative" : "positive"}
-          hint={is.netMarginPct === null ? "No sales yet" : `${is.netMarginPct}% net margin`}
-          icon={FileText}
-        />
-        <StatCard
-          label="Bank balance (books)"
-          value={formatCents(bs.totals.bankCents)}
-          icon={Bank}
-          hint={staff && unmatched ? `${unmatched} bank lines to code` : hasBooks ? "Per the ledger" : "No bank statements yet"}
-          href={staff ? `/books/${client.id}/bank` : undefined}
-          tone={unmatched ? "warn" : "neutral"}
-        />
-      </div>
+      <InkPanel className="p-6 sm:p-8">
+        <div className="grid gap-8 sm:grid-cols-2 xl:grid-cols-4">
+          <Figure label="Income this financial year" value={formatCents(is.totals.salesCents + is.totals.otherIncomeCents)} hint={`Since ${formatCalendarDate(fyStart)}`} />
+          <Figure label="Expenses this financial year" value={formatCents(is.totals.costOfSalesCents + is.totals.expensesCents)} />
+          <Figure label="Net profit" value={formatCents(is.totals.netProfitCents)} tone={is.totals.netProfitCents < 0n ? "down" : "up"} hint={is.netMarginPct === null ? "No sales yet" : `${is.netMarginPct}% net margin`} />
+          <Figure label="Bank balance per books" value={formatCents(bs.totals.bankCents)} hint={staff && unmatched ? `${unmatched} bank lines to code` : hasBooks ? "From the ledger" : "No bank statements yet"} />
+        </div>
+      </InkPanel>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-3">
         <div className="space-y-6 xl:col-span-2">

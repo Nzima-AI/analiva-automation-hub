@@ -1,136 +1,135 @@
-import Link from "next/link";
-import { Badge, Card, Empty, Input, Table, Td } from "@/components/ui";
-import { InvoiceStatusBadge } from "@/components/status";
-import { formatBytes, formatCalendarDate, formatCents, formatDate, humanise } from "@/lib/format";
-import { lookup } from "@/lib/search";
+import { Plus, Receipt } from "@phosphor-icons/react/dist/ssr";
+import { DataTable } from "@/components/crm/data-table";
+import { CLIENT_COLUMNS, CLIENT_FACETS } from "@/lib/crm-columns";
+import { ButtonLink, PageHeader, Tabs } from "@/components/ui";
+import { clientRows, contactRows, documentRows, invoiceRows } from "@/lib/crm";
 import { requireStaff } from "@/lib/session";
+import { searchOlderDocuments, searchOlderInvoices } from "./actions";
 
-export const metadata = { title: "Lookup" };
+export const metadata = { title: "Records" };
 
-type Params = { q?: string; from?: string; to?: string; amount?: string };
+const TABS = ["clients", "contacts", "invoices", "documents"] as const;
+type Tab = (typeof TABS)[number];
 
-export default async function LookupPage({ searchParams }: { searchParams: Promise<Params> }) {
+export default async function RecordsPage({ searchParams }: { searchParams: Promise<{ tab?: string; q?: string }> }) {
   const { db } = await requireStaff();
-  const params = await searchParams;
-  const q = (params.q ?? "").slice(0, 200);
-  const hasQuery = !!(q.trim() || params.from || params.to || params.amount);
-  const results = hasQuery ? await lookup(db, { q, from: params.from, to: params.to, amount: params.amount }) : null;
+  const sp = await searchParams;
+  const tab: Tab = (TABS as readonly string[]).includes(sp.tab ?? "") ? (sp.tab as Tab) : "clients";
+  const [counts] = await Promise.all([
+    Promise.all([db.client.count({ where: { deletedAt: null } }), db.contact.count(), db.invoice.count({ where: { deletedAt: null } }), db.document.count({ where: { deletedAt: null } })]),
+  ]);
+  const [clientCount, contactCount, invoiceCount, documentCount] = counts;
+
+  let table: React.ReactNode;
+  if (tab === "clients") {
+    table = (
+      <DataTable
+        rows={await clientRows(db)}
+        columns={CLIENT_COLUMNS}
+        facets={CLIENT_FACETS}
+        initialQuery={sp.q}
+        totalAvailable={clientCount}
+        emptyText="No clients yet."
+        placeholder="Search name, code, contact, phone, email, VAT or CIPC number"
+      />
+    );
+  } else if (tab === "contacts") {
+    const rows = await contactRows(db);
+    table = (
+      <DataTable
+        rows={rows}
+        columns={[
+          { key: "name", label: "Contact", sub: "position" },
+          { key: "client", label: "Client" },
+          { key: "email", label: "Email", hideBelow: "md" },
+          { key: "phone", label: "Phone", hideBelow: "md" },
+          { key: "primary", label: "", kind: "badge", tones: { PRIMARY: "brand" }, sortable: false, hideBelow: "lg" },
+        ]}
+        facets={[{ key: "client", label: "Client", options: [...new Set(rows.map((r) => String(r.values.client)))].sort().map((c) => ({ value: c, label: c })) }]}
+        initialQuery={sp.q}
+        totalAvailable={contactCount}
+        emptyText="No contacts yet. Add them on a client's page."
+        placeholder="Search name, email, phone or client"
+      />
+    );
+  } else if (tab === "invoices") {
+    const rows = await invoiceRows(db);
+    table = (
+      <DataTable
+        rows={rows}
+        columns={[
+          { key: "number", label: "Invoice", sub: "party" },
+          { key: "client", label: "Client" },
+          { key: "date", label: "Date", kind: "date" },
+          { key: "direction", label: "Type", kind: "badge", tones: { BILL: "neutral", SALE: "brand" }, hideBelow: "md" },
+          { key: "total", label: "Total", kind: "money", align: "right" },
+          { key: "outstanding", label: "Outstanding", kind: "money", align: "right", hideBelow: "lg" },
+          { key: "status", label: "Status", kind: "badge", tones: { CAPTURED: "neutral", NEEDS_REVIEW: "warn", APPROVED: "positive", POSTED: "positive", REJECTED: "danger" } },
+        ]}
+        facets={[
+          { key: "client", label: "Client", options: [...new Set(rows.map((r) => String(r.values.client)))].sort().map((c) => ({ value: c, label: c })) },
+          { key: "status", label: "Status", options: ["CAPTURED", "NEEDS_REVIEW", "APPROVED", "POSTED", "REJECTED"].map((v) => ({ value: v, label: v.replace("_", " ").toLowerCase().replace(/^\w/, (m) => m.toUpperCase()) })) },
+          { key: "direction", label: "Type", options: [{ value: "BILL", label: "Supplier bills" }, { value: "SALE", label: "Sales invoices" }] },
+        ]}
+        initialQuery={sp.q}
+        totalAvailable={invoiceCount}
+        remoteSearch={searchOlderInvoices}
+        defaultSort={{ key: "date", dir: "desc" }}
+        emptyText="No invoices yet."
+        placeholder="Search invoice number, supplier, client, R amount or date (Mar 2024)"
+      />
+    );
+  } else {
+    const rows = await documentRows(db);
+    table = (
+      <DataTable
+        rows={rows}
+        columns={[
+          { key: "filename", label: "File", sub: "by" },
+          { key: "client", label: "Client" },
+          { key: "kind", label: "Type", kind: "badge" },
+          { key: "size", label: "Size", hideBelow: "md", sortable: false },
+          { key: "added", label: "Added", kind: "date" },
+        ]}
+        facets={[
+          { key: "kind", label: "Type", options: ["INVOICE", "STATEMENT", "CIPC", "CONTRACT", "MANDATE", "BRAND_ASSET", "PAYROLL", "TAX", "OTHER"].map((v) => ({ value: v, label: v.replace("_", " ").toLowerCase().replace(/^\w/, (m) => m.toUpperCase()) })) },
+          { key: "source", label: "Came from", options: [{ value: "EMAIL", label: "Email" }, { value: "UPLOAD", label: "Staff upload" }, { value: "PORTAL", label: "Client portal" }] },
+        ]}
+        initialQuery={sp.q}
+        totalAvailable={documentCount}
+        remoteSearch={searchOlderDocuments}
+        defaultSort={{ key: "added", dir: "desc" }}
+        emptyText="No documents yet."
+        placeholder="Search file name or client"
+      />
+    );
+  }
 
   return (
     <div>
-      <form className="mb-8" role="search">
-        <label htmlFor="q" className="mb-2 block text-sm font-medium text-muted">
-          Find anything: client, contact, phone, invoice number, amount, date, VAT or CIPC number
-        </label>
-        <div className="flex gap-2">
-          <Input
-            id="q"
-            name="q"
-            defaultValue={q}
-            autoFocus
-            autoComplete="off"
-            placeholder="e.g. Mokoena · INV-0042 · R 4 500,00 · Mar 2023 · 082 123 4567"
-            className="h-12 text-base"
-          />
-          <button className="h-12 rounded-md bg-brand px-5 text-sm font-medium text-white hover:bg-brand-strong">Search</button>
-        </div>
-        <details className="mt-3 text-sm" open={!!(params.from || params.to || params.amount)}>
-          <summary className="cursor-pointer text-muted hover:text-ink">Filters</summary>
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            <Input name="from" defaultValue={params.from} placeholder="From date (e.g. 2022-01-01)" />
-            <Input name="to" defaultValue={params.to} placeholder="To date (e.g. 2022-12-31)" />
-            <Input name="amount" defaultValue={params.amount} placeholder="Exact total (e.g. 4500.00)" />
-          </div>
-        </details>
-      </form>
-
-      {!results ? (
-        <p className="text-sm text-muted">Results appear here, grouped by clients, invoices and documents, across every year on record.</p>
-      ) : (
-        <div className="space-y-6">
-          {results.dateRange ? (
-            <p className="text-sm text-muted">
-              Dates: {formatCalendarDate(results.dateRange.from)} to {formatCalendarDate(new Date(results.dateRange.to.getTime() - 1))}
-            </p>
-          ) : null}
-
-          <Card title={`Clients (${results.clients.length})`}>
-            {results.clients.length === 0 ? (
-              <Empty>No matching clients.</Empty>
-            ) : (
-              <Table head={["Client", "Code", "Primary contact", "Phone", "Status"]}>
-                {results.clients.map((c) => (
-                  <tr key={c.id} className="hover:bg-canvas">
-                    <Td>
-                      <Link href={`/clients/${c.id}`} className="font-medium text-brand hover:underline">
-                        {c.name}
-                      </Link>
-                      {c.tradingName ? <div className="text-xs text-muted">t/a {c.tradingName}</div> : null}
-                    </Td>
-                    <Td className="tabular">{c.code}</Td>
-                    <Td>{c.contacts[0]?.name ?? "-"}</Td>
-                    <Td className="tabular">{c.phone ?? "-"}</Td>
-                    <Td>
-                      <Badge>{humanise(c.status)}</Badge>
-                    </Td>
-                  </tr>
-                ))}
-              </Table>
-            )}
-          </Card>
-
-          <Card title={`Invoices (${results.invoices.length})`}>
-            {results.invoices.length === 0 ? (
-              <Empty>No matching invoices.</Empty>
-            ) : (
-              <Table head={["Date", "Number", "Client", "Supplier", "Total", "Status"]}>
-                {results.invoices.map((i) => (
-                  <tr key={i.id} className="hover:bg-canvas">
-                    <Td className="tabular whitespace-nowrap">{formatCalendarDate(i.issueDate)}</Td>
-                    <Td>
-                      <Link href={`/invoices/${i.id}`} className="font-medium text-brand hover:underline">
-                        {i.invoiceNumber}
-                      </Link>
-                    </Td>
-                    <Td>
-                      <Link href={`/clients/${i.client.id}`} className="hover:underline">
-                        {i.client.name}
-                      </Link>
-                    </Td>
-                    <Td>{i.supplier?.name ?? "-"}</Td>
-                    <Td className="tabular whitespace-nowrap text-right">{formatCents(i.totalCents, i.currency)}</Td>
-                    <Td>
-                      <InvoiceStatusBadge status={i.status} />
-                    </Td>
-                  </tr>
-                ))}
-              </Table>
-            )}
-          </Card>
-
-          <Card title={`Documents (${results.documents.length})`}>
-            {results.documents.length === 0 ? (
-              <Empty>No matching documents.</Empty>
-            ) : (
-              <Table head={["File", "Client", "Kind", "Size", "Added"]}>
-                {results.documents.map((d) => (
-                  <tr key={d.id} className="hover:bg-canvas">
-                    <Td>
-                      <a href={`/documents/${d.id}/download`} className="font-medium text-brand hover:underline">
-                        {d.filename}
-                      </a>
-                    </Td>
-                    <Td>{d.client ? <Link href={`/clients/${d.client.id}`}>{d.client.name}</Link> : "Practice"}</Td>
-                    <Td>{humanise(d.kind)}</Td>
-                    <Td className="tabular">{formatBytes(d.sizeBytes)}</Td>
-                    <Td className="tabular whitespace-nowrap">{formatDate(d.createdAt)}</Td>
-                  </tr>
-                ))}
-              </Table>
-            )}
-          </Card>
-        </div>
-      )}
+      <PageHeader
+        title="Records"
+        subtitle="Every client, contact, invoice and document. Start typing to narrow down; amounts, dates and phone numbers work too."
+        actions={
+          <>
+            <ButtonLink href="/invoices/new" variant="secondary">
+              <Receipt className="h-4 w-4" /> Capture invoice
+            </ButtonLink>
+            <ButtonLink href="/clients/new">
+              <Plus className="h-4 w-4" /> New client
+            </ButtonLink>
+          </>
+        }
+      />
+      <Tabs
+        items={[
+          { href: "/lookup?tab=clients", label: "Clients", active: tab === "clients", count: clientCount },
+          { href: "/lookup?tab=contacts", label: "Contacts", active: tab === "contacts", count: contactCount },
+          { href: "/lookup?tab=invoices", label: "Invoices", active: tab === "invoices", count: invoiceCount },
+          { href: "/lookup?tab=documents", label: "Documents", active: tab === "documents", count: documentCount },
+        ]}
+      />
+      {table}
     </div>
   );
 }

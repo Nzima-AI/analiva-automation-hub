@@ -2,7 +2,11 @@
 
 Practice platform for a South African accounting firm: client CRM, invoice capture, original-document vault, instant phone-call lookup, and (in later phases) inbox capture, white-label outbound email, client journeys, API and webhooks.
 
-See [CLAUDE.md](CLAUDE.md) for the product brief and build phases, and [docs/decisions](docs/decisions) for the decisions made so far.
+Documentation:
+- [User guide](docs/USER_GUIDE.md): how the practice and clients use the hub (also in the app under **Help**).
+- [Design language](docs/DESIGN.md): the "Ledger" visual system, tokens, motion rules.
+- [Decisions](docs/decisions): architecture decision records.
+- [CLAUDE.md](CLAUDE.md): product brief and build phases.
 
 ## Stack
 
@@ -41,6 +45,15 @@ Optional demo data (fake businesses) into a separate "demo" practice: `pnpm db:s
 | `pnpm db:seed` | Seed demo data |
 | `pnpm setup:storage` | Create/lock down the documents bucket |
 | `pnpm create-owner` | Bootstrap a practice and its owner login |
+
+Live checks (from `apps/web`, against the demo practice; prefix each with `npx tsx --env-file=../../.env --conditions=react-server --tsconfig tsconfig.json`):
+
+| Script | What it checks |
+| --- | --- |
+| `scripts/e2e-books.ts` | Ledger posting, bank import and matching, statements, VAT, reversals, tenant isolation |
+| `scripts/e2e-pages.ts` | Every page and export loads for staff and client logins; clients can't reach practice pages |
+| `scripts/screenshots.ts <dir>` | Light, dark and mobile screenshots of key screens for design review |
+| `scripts/export-guide.ts` | Regenerates docs/USER_GUIDE.md from the in-app guide |
 
 ## Deploying
 

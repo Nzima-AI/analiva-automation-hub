@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Bank, ChartPieSlice, Gauge, Pulse, Receipt, Scales, TrendUp, Wallet } from "@phosphor-icons/react/dist/ssr";
 import { formatCents, natural, type Ratio } from "@aah/core";
 import { BarTrend, Donut } from "@/components/charts";
-import { Badge, Button, ButtonLink, Card, Empty, Notice, StatCard } from "@/components/ui";
+import { Badge, Button, ButtonLink, Card, Empty, Figure, InkPanel, Notice, StatCard } from "@/components/ui";
 import { postMissingInvoices } from "../actions";
 import { monthlySeries, statementsFor } from "@/lib/books/analytics";
 import { financialYearStart } from "@/lib/books/ledger";
@@ -97,18 +97,15 @@ export default async function BooksOverviewPage({ params, searchParams }: { para
       <p className="text-sm text-muted">
         Financial year to date: {formatCalendarDate(from)} to {formatCalendarDate(today)}
       </p>
+      <InkPanel className="p-6 sm:p-8">
+        <div className="grid gap-8 sm:grid-cols-2 xl:grid-cols-4">
+          <Figure label="Sales" value={formatCents(t.salesCents)} hint={t.otherIncomeCents ? `Plus ${formatCents(t.otherIncomeCents)} other income` : "Year to date"} />
+          <Figure label="Gross profit" value={formatCents(t.grossProfitCents)} hint={s.is.grossMarginPct === null ? "No sales yet" : `${s.is.grossMarginPct}% gross margin`} />
+          <Figure label="Net profit" value={formatCents(t.netProfitCents)} tone={t.netProfitCents < 0n ? "down" : "up"} hint={s.is.netMarginPct === null ? "No sales yet" : `${s.is.netMarginPct}% net margin`} />
+          <Figure label="Bank" value={formatCents(s.bs.totals.bankCents)} hint={`Moved ${formatCents(s.cf.bankMovementCents)} this year`} />
+        </div>
+      </InkPanel>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Sales" value={formatCents(t.salesCents)} icon={TrendUp} hint={t.otherIncomeCents ? `+ ${formatCents(t.otherIncomeCents)} other income` : "Year to date"} href={`/books/${clientId}/reports?r=is`} />
-        <StatCard label="Gross profit" value={formatCents(t.grossProfitCents)} icon={Pulse} hint={s.is.grossMarginPct === null ? "-" : `${s.is.grossMarginPct}% gross margin`} />
-        <StatCard
-          label="Net profit"
-          value={formatCents(t.netProfitCents)}
-          icon={Wallet}
-          tone={t.netProfitCents < 0n ? "negative" : "positive"}
-          hint={s.is.netMarginPct === null ? "-" : `${s.is.netMarginPct}% net margin`}
-          href={`/books/${clientId}/reports?r=is`}
-        />
-        <StatCard label="Bank" value={formatCents(s.bs.totals.bankCents)} icon={Bank} hint={`Moved ${formatCents(s.cf.bankMovementCents)} this year`} href={`/books/${clientId}/bank`} />
         <StatCard label="Owed by customers" value={formatCents(s.debtors)} icon={Receipt} href={`/books/${clientId}/reports?r=aged`} />
         <StatCard label="Owed to suppliers" value={formatCents(s.creditors)} icon={Receipt} href={`/books/${clientId}/reports?r=aged`} />
         <StatCard

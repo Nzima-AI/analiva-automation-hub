@@ -56,7 +56,8 @@ export default async function PortalReportsPage({ searchParams }: { searchParams
           </div>
         ) : null}
       </div>
-      <Card>
+      <Card padded={false}>
+        <div className="paper rounded-2xl py-8 pl-16 pr-8">
         <div className="mx-auto max-w-2xl">
           <div className="mb-2 text-center">
             <p className="font-display text-lg font-semibold">{client.name}</p>
@@ -65,6 +66,7 @@ export default async function PortalReportsPage({ searchParams }: { searchParams
             </p>
           </div>
           {r === "is" ? <IncomeStatementView is={s.is} /> : r === "bs" ? <BalanceSheetView bs={s.bs} /> : <CashFlowView cf={s.cf} />}
+        </div>
         </div>
       </Card>
     </div>

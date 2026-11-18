@@ -31,7 +31,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           title: "Clients",
           items: [
             { href: "/clients", label: "Clients", icon: "clients" },
-            { href: "/lookup", label: "Lookup", icon: "lookup" },
+            { href: "/lookup", label: "Records", icon: "lookup" },
           ],
         },
         {
@@ -48,6 +48,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             { href: "/audit", label: "Activity log", icon: "activity" },
             ...(ctx.role === "OWNER" ? [{ href: "/team", label: "Team", icon: "team" as const }] : []),
             { href: "/settings", label: "Settings", icon: "settings" },
+            { href: "/help", label: "Help", icon: "help" },
           ],
         },
       ]
@@ -66,6 +67,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           items: [
             { href: "/portal/enquiries", label: "Enquiries", icon: "enquiries", badge: enquiriesWaiting },
             { href: "/portal/deadlines", label: "Deadlines", icon: "deadlines" },
+            { href: "/portal/help", label: "Help", icon: "help" },
           ],
         },
       ];

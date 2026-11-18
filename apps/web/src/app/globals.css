@@ -429,3 +429,135 @@ html.preloaded #app-preloader {
     }
   }
 }
+
+/* ===========================================================================
+   LEDGER LANGUAGE
+   The product's signature: ink surfaces with cyan light, ruled ledger paper,
+   and figures set in Geist Mono like a well-kept book of account.
+   =========================================================================== */
+:root {
+  --ink-950: #04111b;
+  --ink-900: #071a28;
+  --ink-800: #0b2536;
+  --ink-line: rgb(255 255 255 / 0.08);
+  --rule: rgb(16 24 40 / 0.055);
+  --hl: rgb(255 255 255 / 0.7);
+  --margin-rule: rgb(0 174 239 / 0.35);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --rule: rgb(255 255 255 / 0.045);
+    --hl: rgb(255 255 255 / 0.035);
+  }
+}
+
+/* Figures: mono, tabular, slightly tight */
+.num {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Ruled ledger paper (28px rule, like a cash book) */
+.ledger-lines {
+  background-image: repeating-linear-gradient(to bottom, transparent 0 27px, var(--rule) 27px 28px);
+}
+
+/* A statement printed on ruled paper with a margin line */
+.paper {
+  position: relative;
+  background-color: var(--panel);
+  background-image: repeating-linear-gradient(to bottom, transparent 0 31px, var(--rule) 31px 32px);
+}
+.paper::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 44px;
+  width: 1px;
+  background: var(--margin-rule);
+  pointer-events: none;
+}
+
+/* Ink surface: deep navy with cyan light, grain and fine rules */
+.ink {
+  position: relative;
+  isolation: isolate;
+  color: #e8f4fb;
+  background:
+    radial-gradient(700px 360px at 92% -20%, rgb(30 192 255 / 0.32), transparent 62%),
+    radial-gradient(520px 300px at -10% 120%, rgb(45 212 191 / 0.14), transparent 60%),
+    linear-gradient(165deg, var(--ink-800), var(--ink-950));
+  overflow: hidden;
+}
+.ink::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(to bottom, transparent 0 31px, rgb(255 255 255 / 0.035) 31px 32px);
+  mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 80%, transparent);
+}
+.ink::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.08;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Sidebar sits on ink in both themes */
+.sidebar-ink {
+  background:
+    radial-gradient(420px 260px at 0% 0%, rgb(30 192 255 / 0.16), transparent 60%),
+    linear-gradient(180deg, var(--ink-900), var(--ink-950));
+  color: #cfe3ef;
+  border-right: 1px solid var(--ink-line);
+}
+
+/* Hairline light that runs along a panel's top edge on hover */
+.edge-light {
+  position: relative;
+}
+.edge-light > .edge {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--brand), transparent);
+  opacity: 0;
+  transform: scaleX(0.4);
+  transition:
+    opacity 0.5s ease,
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.edge-light:hover > .edge {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+/* Links with an arrow nudge forward on hover */
+.arrow-link svg {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.arrow-link:hover svg {
+  transform: translateX(3px);
+}
+
+/* Underline that draws in from the left */
+.draw-underline {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.draw-underline:hover {
+  background-size: 100% 1px;
+}

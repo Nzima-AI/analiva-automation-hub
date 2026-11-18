@@ -111,5 +111,40 @@ export function MotionLayer() {
     };
   }, []);
 
+  // Magnetic primary buttons: a small pull toward the cursor, springing back on leave.
+  useEffect(() => {
+    if (reducedMotion() || !matchMedia("(hover: hover)").matches) return;
+    const movers = new WeakMap<HTMLElement, { x: gsap.QuickToFunc; y: gsap.QuickToFunc }>();
+    const get = (el: HTMLElement) => {
+      let m = movers.get(el);
+      if (!m) {
+        m = { x: gsap.quickTo(el, "x", { duration: 0.5, ease: "power3.out" }), y: gsap.quickTo(el, "y", { duration: 0.5, ease: "power3.out" }) };
+        movers.set(el, m);
+      }
+      return m;
+    };
+    const onMove = (e: PointerEvent) => {
+      const el = (e.target as HTMLElement).closest<HTMLElement>("[data-magnetic]");
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const m = get(el);
+      m.x(((e.clientX - r.left) / r.width - 0.5) * 8);
+      m.y(((e.clientY - r.top) / r.height - 0.5) * 6);
+    };
+    const onOut = (e: PointerEvent) => {
+      const el = (e.target as HTMLElement).closest<HTMLElement>("[data-magnetic]");
+      if (!el || el.contains(e.relatedTarget as Node)) return;
+      const m = get(el);
+      m.x(0);
+      m.y(0);
+    };
+    document.addEventListener("pointermove", onMove, { passive: true });
+    document.addEventListener("pointerout", onOut, { passive: true });
+    return () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerout", onOut);
+    };
+  }, []);
+
   return <div id="route-progress" ref={bar} aria-hidden />;
 }

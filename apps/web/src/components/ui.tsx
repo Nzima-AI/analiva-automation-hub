@@ -22,11 +22,11 @@ type Variant = keyof typeof buttonVariants;
 type Size = keyof typeof buttonSizes;
 
 export function Button({ variant = "primary", size = "md", className, ...props }: ComponentProps<"button"> & { variant?: Variant; size?: Size }) {
-  return <button className={cx(buttonBase, buttonSizes[size], buttonVariants[variant], className)} {...props} />;
+  return <button data-magnetic={variant === "primary" && size !== "sm" ? "" : undefined} className={cx(buttonBase, buttonSizes[size], buttonVariants[variant], className)} {...props} />;
 }
 
 export function ButtonLink({ variant = "primary", size = "md", className, ...props }: ComponentProps<typeof Link> & { variant?: Variant; size?: Size }) {
-  return <Link className={cx(buttonBase, buttonSizes[size], buttonVariants[variant], className)} {...props} />;
+  return <Link data-magnetic={variant === "primary" && size !== "sm" ? "" : undefined} className={cx(buttonBase, buttonSizes[size], buttonVariants[variant], className)} {...props} />;
 }
 
 // ---------------------------------------------------------------- form fields
@@ -89,24 +89,28 @@ export function Card({
   padded?: boolean;
 }) {
   return (
-    <section data-reveal data-spotlight className={cx("rounded-2xl border border-line bg-panel shadow-xs transition-[border-color,box-shadow] duration-500 hover:border-line-strong hover:shadow-sm", className)}>
+    <section
+      data-reveal
+      data-spotlight
+      className={cx(
+        "edge-light rounded-2xl border border-line bg-panel shadow-[0_1px_0_var(--hl)_inset,var(--shadow-xs)] transition-[border-color,box-shadow] duration-500 hover:border-line-strong hover:shadow-sm",
+        className,
+      )}
+    >
+      <span className="edge" aria-hidden />
       {title || actions ? (
-        <header className="flex items-start justify-between gap-4 border-b border-line px-5 py-3.5">
-          <div className="flex min-w-0 items-start gap-2.5">
-            {Icon ? (
-              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand-text">
-                <Icon className="h-4 w-4" aria-hidden />
-              </span>
-            ) : null}
-            <div className="min-w-0">
-              <h2 className="font-display text-[15px] font-semibold text-ink">{title}</h2>
-              {description ? <p className="mt-0.5 text-xs text-muted">{description}</p> : null}
-            </div>
+        <header className="flex items-start justify-between gap-4 px-5 pb-1 pt-4">
+          <div className="min-w-0">
+            <h2 className="flex items-center gap-2 text-[14px] font-semibold tracking-tight text-ink">
+              {Icon ? <Icon className="h-4 w-4 shrink-0 text-brand-text" weight="duotone" aria-hidden /> : null}
+              {title}
+            </h2>
+            {description ? <p className="mt-0.5 text-xs text-muted">{description}</p> : null}
           </div>
           {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
         </header>
       ) : null}
-      <div className={padded ? "p-5" : ""}>{children}</div>
+      <div className={padded ? (title || actions ? "px-5 pb-5 pt-3" : "p-5") : title || actions ? "pt-2" : ""}>{children}</div>
     </section>
   );
 }
@@ -138,11 +142,12 @@ export function StatCard({
 }) {
   const body = (
     <>
+      <span className="edge" aria-hidden />
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[13px] font-medium text-muted">{label}</span>
-        {Icon ? <Icon className="h-4 w-4 text-faint" aria-hidden /> : null}
+        <span className="text-[12.5px] font-medium text-muted">{label}</span>
+        {Icon ? <Icon className="h-4 w-4 text-faint transition-colors group-hover:text-brand-text" weight="duotone" aria-hidden /> : null}
       </div>
-      <div className={cx("mt-2 font-display text-[26px] font-semibold leading-none tracking-tight tabular", statTones[tone])}>
+      <div className={cx("num mt-2.5 text-[26px] font-medium leading-none", statTones[tone])}>
         {typeof value === "string" || typeof value === "number" ? <CountUp value={String(value)} /> : value}
       </div>
       <div className="mt-1 flex items-center gap-2 text-xs text-muted">
@@ -155,7 +160,8 @@ export function StatCard({
       </div>
     </>
   );
-  const cls = "block rounded-2xl border border-line bg-panel p-4 shadow-xs transition-all duration-500 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]";
+  const cls =
+    "edge-light group block rounded-2xl border border-line bg-panel p-4 shadow-[0_1px_0_var(--hl)_inset,var(--shadow-xs)] transition-all duration-500 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]";
   return href ? (
     <Link href={href} data-reveal data-spotlight className={cx(cls, "hover:-translate-y-0.5 hover:border-line-strong hover:shadow-md")}>
       {body}
@@ -210,10 +216,10 @@ export function Notice({ tone = "danger", children }: { tone?: "danger" | "brand
 
 export function Empty({ children, icon: Icon, action }: { children: ReactNode; icon?: Icon; action?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+    <div className="ledger-lines flex flex-col items-center justify-center gap-3 rounded-xl px-6 py-12 text-center">
       {Icon ? (
-        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-subtle text-faint">
-          <Icon className="h-5 w-5" aria-hidden />
+        <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-line bg-panel text-brand-text shadow-sm">
+          <Icon className="h-5 w-5" weight="duotone" aria-hidden />
         </span>
       ) : null}
       <div className="max-w-sm text-sm text-muted">{children}</div>
@@ -272,6 +278,37 @@ export function Progress({ value, tone = "brand" }: { value: number; tone?: "bra
   return (
     <div className="h-1.5 w-full overflow-hidden rounded-full bg-subtle">
       <div className={cx("h-full rounded-full transition-all", colors[tone])} style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
+    </div>
+  );
+}
+
+/** Ink surface: the product's signature dark panel (hero bands, key figures). */
+export function InkPanel({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <section data-reveal className={cx("ink rounded-3xl border border-white/10 shadow-[0_30px_60px_-30px_rgb(4_17_27/0.55)]", className)}>
+      {children}
+    </section>
+  );
+}
+
+/** A large figure with a small currency mark, for ink panels. */
+export function Figure({ label, value, hint, tone = "default" }: { label: string; value: string; hint?: ReactNode; tone?: "default" | "up" | "down" }) {
+  const m = /^(-?)R\s?(.*)$/.exec(value);
+  return (
+    <div className="min-w-0">
+      <p className="text-[12.5px] font-medium text-white/60">{label}</p>
+      <p className={cx("num mt-1.5 truncate text-[30px] font-medium leading-none sm:text-[34px]", tone === "up" ? "text-[#5eead4]" : tone === "down" ? "text-[#fda4af]" : "text-white")}>
+        {m ? (
+          <>
+            {m[1]}
+            <span className="mr-1 align-top text-[0.55em] text-white/50">R</span>
+            <CountUp value={m[2]!} />
+          </>
+        ) : (
+          <CountUp value={value} />
+        )}
+      </p>
+      {hint ? <p className="mt-2 truncate text-xs text-white/55">{hint}</p> : null}
     </div>
   );
 }
