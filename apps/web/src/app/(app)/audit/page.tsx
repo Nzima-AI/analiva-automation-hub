@@ -29,7 +29,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
         {entries.length === 0 ? (
           <Empty>No activity yet.</Empty>
         ) : (
-          <Table head={["When", "Who", "Action", "Record", "Reason / details"]}>
+          <Table mobilePrimary={2} mobilePreview={0} head={["When", "Who", "Action", "Record", "Reason / details"]}>
             {entries.map((e) => {
               const href = ENTITY_LINKS[e.entityType]?.(e.entityId);
               const meta = e.metadata && typeof e.metadata === "object" ? Object.entries(e.metadata as Record<string, unknown>).filter(([, v]) => v !== null && v !== "") : [];

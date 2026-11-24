@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useDeferredValue, useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import { ArrowDown, ArrowUp, FunnelSimple, MagnifyingGlass, X } from "@phosphor-icons/react";
 import { parseLookupQuery } from "@aah/core";
+import { ResponsiveCellContent } from "@/components/table-disclosure";
 import { cx } from "@/components/ui";
 
 /**
@@ -114,6 +115,8 @@ export function DataTable({
   const deferred = useDeferredValue(q);
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [sort, setSort] = useState(defaultSort ?? null);
+  const sortId = useId();
+  const previewColumn = columns.findIndex((column, index) => index > 0 && column.kind === "badge");
   const [limit, setLimit] = useState(100);
   const [extra, setExtra] = useState<Row[]>([]);
   const [searching, startSearch] = useTransition();
@@ -255,15 +258,39 @@ export function DataTable({
         )}
       </p>
 
-      <div className="overflow-hidden rounded-2xl border border-line bg-panel shadow-xs">
-        <div className="max-h-[calc(100dvh-260px)] overflow-auto scroll-thin">
-          <table className="w-full text-left text-sm">
-            <thead className="sticky top-0 z-[1] bg-panel-2/95 backdrop-blur">
-              <tr className="border-b border-line">
+      <div className="mb-2 flex items-center gap-2 md:hidden">
+        <label htmlFor={sortId} className="text-xs font-medium text-muted">Sort</label>
+        <select
+          id={sortId}
+          className="rounded-lg border border-line bg-panel px-2 py-2 text-sm text-ink"
+          value={sort?.key ?? ""}
+          onChange={(event) => {
+            const column = columns.find((c) => c.key === event.target.value);
+            setSort(column ? { key: column.key, dir: column.kind === "money" || column.kind === "date" ? "desc" : "asc" } : null);
+          }}
+        >
+          <option value="">Default order</option>
+          {columns.filter((c) => c.sortable !== false).map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+        </select>
+        {sort ? (
+          <button type="button" className="rounded-lg border border-line bg-panel px-2 py-2 text-sm text-ink"
+            aria-label={sort.dir === "asc" ? "Sort descending" : "Sort ascending"}
+            onClick={() => setSort({ key: sort.key, dir: sort.dir === "asc" ? "desc" : "asc" })}
+          >
+            {sort.dir === "asc" ? <ArrowUp size={16} aria-hidden /> : <ArrowDown size={16} aria-hidden />}
+          </button>
+        ) : null}
+      </div>
+
+      <div className="crm-table-frame">
+        <div className="record-table-scroll crm-table-scroll scroll-thin">
+          <table className="record-table w-full text-left text-sm" role="table">
+            <thead className="sticky top-0 z-[1]" role="rowgroup">
+              <tr role="row">
                 {columns.map((c) => {
                   const active = sort?.key === c.key;
                   return (
-                    <th key={c.key} className={cx("whitespace-nowrap px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-faint", c.align === "right" && "text-right", c.hideBelow && hide[c.hideBelow])}>
+                    <th key={c.key} scope="col" role="columnheader" aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : undefined} className={cx("whitespace-nowrap px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-faint", c.align === "right" && "text-right", c.hideBelow && hide[c.hideBelow])}>
                       {c.sortable === false ? (
                         c.label
                       ) : (
@@ -280,15 +307,16 @@ export function DataTable({
                 })}
               </tr>
             </thead>
-            <tbody>
+            <tbody role="rowgroup">
               {visible.slice(0, limit).map((r) => (
                 <tr
                   key={r.id}
+                  role="row"
                   onClick={(e) => {
-                    if ((e.target as HTMLElement).closest("a,button")) return;
+                    if ((e.target as HTMLElement).closest("a,button,summary,details") || matchMedia("(max-width: 767px)").matches) return;
                     router.push(r.href);
                   }}
-                  className="group cursor-pointer border-b border-line/70 transition-colors last:border-b-0 hover:bg-brand-soft/40"
+                  className="record-row group md:cursor-pointer"
                 >
                   {columns.map((c, i) => {
                     const v = r.values[c.key];
@@ -302,22 +330,19 @@ export function DataTable({
                       content = <span className={cx("inline-flex rounded-full border px-2 py-0.5 text-xs font-medium", toneCls[c.tones?.[String(v)] ?? "neutral"])}>{String(v).replace(/_/g, " ").toLowerCase().replace(/^\w/, (m) => m.toUpperCase())}</span>;
                     else content = <Highlight text={String(v)} terms={terms} />;
                     return (
-                      <td key={c.key} className={cx("px-4 py-3 align-top", c.align === "right" && "text-right", c.hideBelow && hide[c.hideBelow], i === 0 && "relative")}>
-                        {i === 0 ? (
-                          <>
-                            <span className="absolute inset-y-2 left-0 w-[3px] origin-center scale-y-0 rounded-r-full bg-brand transition-transform duration-300 group-hover:scale-y-100" aria-hidden />
+                      <td key={c.key} role="cell" className={cx("record-field align-top", i === 0 && "record-field-primary", i === previewColumn && "record-field-preview", c.align === "right" && "text-right", c.hideBelow && hide[c.hideBelow], i === 0 && "relative")}>
+                        <ResponsiveCellContent label={c.label} primary={i === 0}>
+                          {i === 0 ? (
                             <Link href={r.href} className="font-medium text-ink transition-colors group-hover:text-brand-text">
                               {content}
                             </Link>
-                          </>
-                        ) : (
-                          content
-                        )}
-                        {sub ? (
-                          <div className="mt-0.5 truncate text-xs text-faint">
-                            <Highlight text={String(sub)} terms={terms} />
-                          </div>
-                        ) : null}
+                          ) : content}
+                          {sub ? (
+                            <div className="mt-0.5 truncate text-xs text-faint">
+                              <Highlight text={String(sub)} terms={terms} />
+                            </div>
+                          ) : null}
+                        </ResponsiveCellContent>
                       </td>
                     );
                   })}

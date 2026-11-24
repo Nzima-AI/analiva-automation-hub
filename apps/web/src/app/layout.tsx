@@ -12,24 +12,37 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-// Hide reveal blocks until GSAP animates them in (only when motion is allowed).
-// The timeout guarantees content shows even if scripts fail to load.
-const revealScript = `(function(){try{if(!matchMedia('(prefers-reduced-motion: reduce)').matches){var d=document.documentElement;d.classList.add('reveal-pending');setTimeout(function(){d.classList.remove('reveal-pending');d.classList.add('preloaded')},3500)}else{document.documentElement.classList.add('preloaded')}}catch(e){}})();`;
+// Apply preferences before paint. The first-visit intro never blocks interaction.
+const appearanceScript = `(() => {
+  const root = document.documentElement;
+  try {
+    const theme = localStorage.getItem("analiva-hub-theme");
+    if (theme === "dark" || theme === "light") root.dataset.theme = theme;
+    if (localStorage.getItem("analiva-hub-sidebar") === "collapsed") root.dataset.sidebar = "collapsed";
+  } catch {}
+  try {
+    if (!sessionStorage.getItem("analiva-hub-intro") && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      sessionStorage.setItem("analiva-hub-intro", "seen");
+      root.classList.add("intro-pending");
+      setTimeout(() => root.classList.remove("intro-pending"), 1400);
+    }
+  } catch {}
+})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-ZA" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: revealScript }} />
+        <script dangerouslySetInnerHTML={{ __html: appearanceScript }} />
       </head>
       <body className="min-h-screen">
-        <div id="app-preloader" role="status" aria-label="Loading">
+        <div id="app-preloader" aria-hidden="true">
           <div className="pl-inner flex flex-col items-center">
-            <div className="pl-mark">A</div>
+            <div className="pl-mark"><span>A</span></div>
             <div className="pl-track">
               <div className="pl-bar" />
             </div>
-            <p className="pl-caption">Analiva Automation Hub</p>
+            <p className="pl-caption">Analiva</p>
           </div>
         </div>
         <Suspense>

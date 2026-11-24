@@ -1,12 +1,15 @@
 import Link from "next/link";
-import { deleteDocument } from "@/app/(app)/documents/actions";
-import { Badge, Empty, Table, Td } from "@/components/ui";
+import { classifyDocument, deleteDocument } from "@/app/(app)/documents/actions";
+import { Badge, Button, Empty, Select, Table, Td } from "@/components/ui";
+import { DOCUMENT_KINDS } from "@/lib/documents";
 import { formatBytes, formatDateTime, humanise } from "@/lib/format";
 
 interface Row {
   id: string;
   filename: string;
   kind: string;
+  needsClassificationReview?: boolean;
+  classificationMethod?: string | null;
   source: string;
   sizeBytes: number;
   createdAt: Date;
@@ -14,10 +17,10 @@ interface Row {
   uploadedBy?: { name: string } | null;
 }
 
-export function DocumentTable({ documents, showClient, canDelete }: { documents: Row[]; showClient?: boolean; canDelete?: boolean }) {
+export function DocumentTable({ documents, showClient, canDelete, canClassify }: { documents: Row[]; showClient?: boolean; canDelete?: boolean; canClassify?: boolean }) {
   if (documents.length === 0) return <Empty>No documents yet.</Empty>;
   return (
-    <Table head={["File", ...(showClient ? ["Client"] : []), "Type", "Size", "Added", ""]}>
+    <Table mobilePreview={showClient ? 2 : 1} head={["File", ...(showClient ? ["Client"] : []), "Type", "Size", "Added", ""]}>
       {documents.map((d) => (
         <tr key={d.id} className="hover:bg-canvas">
           <Td>
@@ -33,7 +36,22 @@ export function DocumentTable({ documents, showClient, canDelete }: { documents:
             <Td>{d.client ? <Link href={`/clients/${d.client.id}`} className="hover:underline">{d.client.name}</Link> : <span className="text-muted">Practice</span>}</Td>
           ) : null}
           <Td>
-            <Badge>{humanise(d.kind)}</Badge>
+            <Badge tone={canClassify && d.needsClassificationReview ? "warn" : "neutral"}>
+              {canClassify && d.needsClassificationReview ? "Needs classification" : humanise(d.kind)}
+            </Badge>
+            {canClassify && d.classificationMethod === "ai" ? <p className="mt-1 text-xs text-muted">AI classified</p> : null}
+            {canClassify && d.source === "EMAIL" ? (
+              <details className="mt-2">
+                <summary className="cursor-pointer whitespace-nowrap text-xs text-brand-text">{d.needsClassificationReview ? "Choose category" : "Change category"}</summary>
+                <form action={classifyDocument.bind(null, d.id)} className="mt-2 flex items-center gap-2">
+                  <Select name="kind" aria-label={`Category for ${d.filename}`} defaultValue={d.needsClassificationReview ? "" : d.kind} required>
+                    <option value="" disabled>Choose category</option>
+                    {DOCUMENT_KINDS.map((kind) => <option key={kind} value={kind}>{humanise(kind)}</option>)}
+                  </Select>
+                  <Button type="submit" size="sm" variant="secondary">Save</Button>
+                </form>
+              </details>
+            ) : null}
           </Td>
           <Td className="tabular whitespace-nowrap">{formatBytes(d.sizeBytes)}</Td>
           <Td className="tabular whitespace-nowrap">{formatDateTime(d.createdAt)}</Td>

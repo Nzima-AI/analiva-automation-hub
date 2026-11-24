@@ -129,7 +129,7 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
             {invoices.length === 0 ? (
               <Empty icon={Receipt}>No invoices yet. They arrive from the inbox or can be captured manually.</Empty>
             ) : (
-              <Table head={["Date", "Number", "Supplier / customer", "Total", "Status"]} align={["left", "left", "left", "right", "left"]}>
+              <Table mobilePrimary={1} mobilePreview={3} head={["Date", "Number", "Supplier / customer", "Total", "Status"]} align={["left", "left", "left", "right", "left"]}>
                 {invoices.map((i) => (
                   <tr key={i.id} className="hover:bg-subtle/60">
                     <Td className="tabular whitespace-nowrap text-muted">{formatCalendarDate(i.issueDate)}</Td>

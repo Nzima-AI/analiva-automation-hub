@@ -1,3 +1,4 @@
+import { ReportTableDisclosure } from "@/components/table-disclosure";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DownloadSimple, FileXls } from "@phosphor-icons/react/dist/ssr";
@@ -146,6 +147,7 @@ export default async function ReportsPage({ params, searchParams }: { params: Pr
         <Card padded={false}>
           <div className="paper rounded-2xl py-8 pl-16 pr-8">
           {head}
+          <ReportTableDisclosure>
           <table className="mx-auto w-full max-w-2xl text-sm">
             <tbody>
               <Section title="Sales" lines={s.is.sales} total={t.salesCents} clientId={clientId} />
@@ -158,6 +160,7 @@ export default async function ReportsPage({ params, searchParams }: { params: Pr
               <TotalRow label={`Net profit${s.is.netMarginPct !== null ? ` (${s.is.netMarginPct}%)` : ""}`} c={t.netProfitCents} big />
             </tbody>
           </table>
+          </ReportTableDisclosure>
           </div>
         </Card>
       );
@@ -174,6 +177,7 @@ export default async function ReportsPage({ params, searchParams }: { params: Pr
           <div className="paper rounded-2xl py-8 pl-16 pr-8">
           {head}
           {!b.balanced ? <Notice>The balance sheet is out by {formatCents(b.totals.totalAssetsCents - b.totals.liabilitiesAndEquityCents)}. Check the trial balance.</Notice> : null}
+          <ReportTableDisclosure>
           <table className="mx-auto w-full max-w-2xl text-sm">
             <tbody>
               <Section title="Non-current assets" lines={b.nonCurrentAssets} total={b.totals.nonCurrentAssetsCents} clientId={clientId} />
@@ -185,6 +189,7 @@ export default async function ReportsPage({ params, searchParams }: { params: Pr
               <TotalRow label="Total equity and liabilities" c={b.totals.liabilitiesAndEquityCents} big />
             </tbody>
           </table>
+          </ReportTableDisclosure>
           </div>
         </Card>
       );
@@ -194,6 +199,7 @@ export default async function ReportsPage({ params, searchParams }: { params: Pr
       <Card padded={false}>
         <div className="paper rounded-2xl py-8 pl-16 pr-8">
         {head}
+        <ReportTableDisclosure>
         <table className="mx-auto w-full max-w-2xl text-sm">
           <tbody>
             <tr>
@@ -215,6 +221,7 @@ export default async function ReportsPage({ params, searchParams }: { params: Pr
             </tr>
           </tbody>
         </table>
+        </ReportTableDisclosure>
         </div>
       </Card>
     );
@@ -231,6 +238,7 @@ export default async function ReportsPage({ params, searchParams }: { params: Pr
         {tb.rows.length === 0 ? (
           <Empty>No balances yet.</Empty>
         ) : (
+          <ReportTableDisclosure>
           <table className="mx-auto w-full max-w-3xl text-sm">
             <thead>
               <tr className="border-b border-line text-left text-[11px] font-semibold uppercase tracking-wider text-faint">
@@ -259,6 +267,7 @@ export default async function ReportsPage({ params, searchParams }: { params: Pr
               </tr>
             </tbody>
           </table>
+          </ReportTableDisclosure>
         )}
       </Card>
     );
@@ -300,6 +309,7 @@ export default async function ReportsPage({ params, searchParams }: { params: Pr
         {!acc ? (
           <Empty>Choose an account to see every line posted to it, with a running balance.</Empty>
         ) : (
+          <ReportTableDisclosure>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-line text-left text-[11px] font-semibold uppercase tracking-wider text-faint">
@@ -340,6 +350,7 @@ export default async function ReportsPage({ params, searchParams }: { params: Pr
               </tr>
             </tbody>
           </table>
+          </ReportTableDisclosure>
         )}
       </Card>
     );
@@ -399,6 +410,7 @@ export default async function ReportsPage({ params, searchParams }: { params: Pr
           </Select>
           <button className="h-9 rounded-lg border border-line bg-panel px-3 text-sm hover:bg-subtle">Show</button>
         </form>
+        <ReportTableDisclosure>
         <table className="w-full max-w-2xl text-sm">
           <tbody>
             {fields.map(([f, label, v]) => (
@@ -410,6 +422,7 @@ export default async function ReportsPage({ params, searchParams }: { params: Pr
             ))}
           </tbody>
         </table>
+        </ReportTableDisclosure>
         <p className="mt-4 text-xs text-muted">
           Total income in the period: {formatCents(sales)}. Zero-rated and exempt supplies, capital goods (field 14) and adjustments aren&apos;t split out by the books yet; enter those on eFiling if they apply.
         </p>
@@ -449,6 +462,7 @@ export default async function ReportsPage({ params, searchParams }: { params: Pr
           <Empty>Nothing outstanding.</Empty>
         ) : (
           <div className="overflow-x-auto scroll-thin">
+            <ReportTableDisclosure>
             <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-line text-left text-[11px] font-semibold uppercase tracking-wider text-faint">
@@ -486,6 +500,7 @@ export default async function ReportsPage({ params, searchParams }: { params: Pr
                 </tr>
               </tbody>
             </table>
+            </ReportTableDisclosure>
           </div>
         )}
       </Card>

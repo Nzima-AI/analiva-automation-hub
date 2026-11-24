@@ -71,7 +71,7 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
         {items.length === 0 ? (
           <Empty>{showRecent ? "Nothing filed yet." : "Nothing waiting."}</Empty>
         ) : (
-          <Table head={["Received", "From", "Document", "Read as", "Client", "Confidence", ""]}>
+          <Table mobilePrimary={2} mobilePreview={5} head={["Received", "From", "Document", "Read as", "Client", "Confidence", ""]}>
             {items.map((c) => {
               const x = readExtracted(c.extracted).fields;
               const label = CAPTURE_LABEL[c.status];

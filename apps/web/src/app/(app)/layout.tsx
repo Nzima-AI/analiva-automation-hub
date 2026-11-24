@@ -1,4 +1,6 @@
+import { PlatformTour } from "@/components/tour/platform-tour";
 import { isPracticeRole } from "@aah/core";
+import { ThemeToggle } from "@/components/shell/appearance";
 import { CommandBar } from "@/components/shell/command-bar";
 import { Sidebar, type NavSection } from "@/components/shell/sidebar";
 import { humanise } from "@/lib/format";
@@ -31,6 +33,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           title: "Clients",
           items: [
             { href: "/clients", label: "Clients", icon: "clients" },
+            { href: "/marketing", label: "Leads & campaigns", icon: "enquiries" },
             { href: "/lookup", label: "Records", icon: "lookup" },
           ],
         },
@@ -74,14 +77,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="app-backdrop min-h-screen md:flex">
-      <Sidebar sections={sections} user={{ name: user.name, role: humanise(user.role) }} practiceName={practice.name} />
+      <PlatformTour key={user.id} userId={user.id} staff={staff} />
+      <Sidebar sections={sections} user={{ name: user.name, role: humanise(user.role) }} practiceName={practice.name} showTier={staff} />
       <div className="min-w-0 flex-1">
-        {staff ? (
-          <div className="no-print sticky top-0 z-20 hidden items-center gap-4 border-b border-line bg-canvas/80 px-8 py-3 backdrop-blur md:flex">
-            <CommandBar />
-          </div>
-        ) : null}
-        <main className="fade-in px-4 py-6 md:px-8 md:py-8">
+        <div className="shell-toolbar no-print sticky top-0 z-20 hidden items-center justify-between gap-4 px-7 md:flex">
+          {staff ? <CommandBar /> : <span className="text-sm font-medium text-muted">{practice.name}</span>}
+          <ThemeToggle />
+        </div>
+        <main className="px-4 py-6 md:px-8 md:py-9">
           <div className="mx-auto max-w-7xl">{children}</div>
         </main>
       </div>

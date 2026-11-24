@@ -28,7 +28,7 @@ export default async function InboxPage() {
         {emails.length === 0 ? (
           <Empty>No emails fetched yet.</Empty>
         ) : (
-          <Table head={["Received", "From", "Subject", "Type", "Client", "Result"]}>
+          <Table mobilePrimary={2} mobilePreview={3} head={["Received", "From", "Subject", "Type", "Client", "Result"]}>
             {emails.map((e) => (
               <tr key={e.id} className="hover:bg-canvas">
                 <Td className="tabular whitespace-nowrap">{formatDateTime(e.receivedAt)}</Td>
@@ -53,6 +53,9 @@ export default async function InboxPage() {
                   )}
                 </Td>
                 <Td className="text-sm">
+                  {e.kind === "QUERY" ? (
+                    <Link href={`/marketing?inbox=${e.id}`} className="mr-2 text-brand hover:underline">Capture lead</Link>
+                  ) : null}
                   {e.captures.length === 0 ? (
                     <span className="text-muted">Stored</span>
                   ) : (

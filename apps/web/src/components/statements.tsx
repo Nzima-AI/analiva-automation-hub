@@ -1,3 +1,4 @@
+import { ReportTableDisclosure } from "@/components/table-disclosure";
 import type { BalanceSheet, CashFlow, IncomeStatement, StatementLine } from "@aah/core";
 import { formatCents } from "@aah/core";
 import { cx } from "@/components/ui";
@@ -47,6 +48,7 @@ function Total({ label, c, big }: { label: string; c: bigint; big?: boolean }) {
 export function IncomeStatementView({ is }: { is: IncomeStatement }) {
   const t = is.totals;
   return (
+    <ReportTableDisclosure>
     <table className="w-full text-sm">
       <tbody>
         <Section title="Sales" lines={is.sales} total={t.salesCents} />
@@ -59,6 +61,7 @@ export function IncomeStatementView({ is }: { is: IncomeStatement }) {
         <Total label={`Net profit${is.netMarginPct !== null ? ` (${is.netMarginPct}%)` : ""}`} c={t.netProfitCents} big />
       </tbody>
     </table>
+    </ReportTableDisclosure>
   );
 }
 
@@ -69,6 +72,7 @@ export function BalanceSheetView({ bs }: { bs: BalanceSheet }) {
     { accountId: "current", code: "", name: "Profit for the current year", amountCents: bs.currentYearProfitCents },
   ];
   return (
+    <ReportTableDisclosure>
     <table className="w-full text-sm">
       <tbody>
         <Section title="Non-current assets" lines={bs.nonCurrentAssets} total={bs.totals.nonCurrentAssetsCents} />
@@ -80,11 +84,13 @@ export function BalanceSheetView({ bs }: { bs: BalanceSheet }) {
         <Total label="Total equity and liabilities" c={bs.totals.liabilitiesAndEquityCents} big />
       </tbody>
     </table>
+    </ReportTableDisclosure>
   );
 }
 
 export function CashFlowView({ cf }: { cf: CashFlow }) {
   return (
+    <ReportTableDisclosure>
     <table className="w-full text-sm">
       <tbody>
         <tr>
@@ -100,5 +106,6 @@ export function CashFlowView({ cf }: { cf: CashFlow }) {
         <Total label="Net change in cash" c={cf.netChangeCents} big />
       </tbody>
     </table>
+    </ReportTableDisclosure>
   );
 }

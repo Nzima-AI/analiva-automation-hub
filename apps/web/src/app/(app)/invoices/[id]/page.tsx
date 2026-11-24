@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { DocumentQuickPreview } from "@/components/document-quick-preview";
+import { SaveInvoiceToDesktop } from "@/components/save-invoice-to-desktop";
 import { InvoiceStatusBadge } from "@/components/status";
 import { Badge, Button, ButtonLink, Card, Input, Notice, PageHeader, Select } from "@/components/ui";
 import { ACCOUNT_TYPE_INFO, type AccountType } from "@aah/core";
@@ -29,7 +31,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
     include: {
       client: { select: { id: true, name: true, code: true } },
       supplier: true,
-      sourceDocument: { select: { id: true, filename: true } },
+      sourceDocument: { select: { id: true, filename: true, mimeType: true, sizeBytes: true } },
       capturedBy: { select: { name: true } },
       lines: { orderBy: { position: "asc" } },
     },
@@ -98,9 +100,10 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
         <div className="space-y-6">
           <Card title="Original document">
             {invoice.sourceDocument ? (
-              <a href={`/documents/${invoice.sourceDocument.id}/download?view=1`} target="_blank" rel="noopener" className="text-sm text-brand hover:underline">
-                {invoice.sourceDocument.filename}
-              </a>
+              <div className="space-y-3">
+                <DocumentQuickPreview key={invoice.sourceDocument.id} document={invoice.sourceDocument} />
+                <SaveInvoiceToDesktop documentId={invoice.sourceDocument.id} filename={invoice.sourceDocument.filename} />
+              </div>
             ) : (
               <p className="text-sm text-muted">No original linked.</p>
             )}

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { MagnifyingGlass } from "@phosphor-icons/react";
+import { TourLauncher } from "@/components/tour/platform-tour";
 import { cx } from "@/components/ui";
 
 export interface HelpSection {
@@ -37,7 +38,10 @@ export function HelpCenter({ sections, title, intro }: { sections: HelpSection[]
   return (
     <div>
       <section data-reveal className="ink mb-8 rounded-3xl border border-white/10 px-6 py-9 sm:px-10">
-        <h1 className="font-display text-[34px] font-semibold tracking-tight text-white">{title}</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="font-display text-[34px] font-semibold tracking-tight text-white">{title}</h1>
+          <TourLauncher />
+        </div>
         <p className="mt-2 max-w-[60ch] text-sm text-white/65">{intro}</p>
         <label className="relative mt-6 block max-w-xl">
           <MagnifyingGlass className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />

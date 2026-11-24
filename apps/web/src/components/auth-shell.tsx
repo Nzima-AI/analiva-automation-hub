@@ -1,3 +1,5 @@
+import Image from "next/image";
+import { ThemeToggle } from "@/components/shell/appearance";
 import type { ReactNode } from "react";
 import { BookOpen, CalendarCheck, EnvelopeOpen, ShieldCheck } from "@phosphor-icons/react/dist/ssr";
 
@@ -11,15 +13,15 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
   return (
     <main className="grid min-h-[100dvh] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
       <section className="flex flex-col justify-between px-6 py-8 sm:px-12 lg:px-16">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-brand-deep text-sm font-bold text-white shadow-[0_10px_24px_-10px_rgb(0_134_195/0.7)]">A</span>
-          <span className="leading-tight">
-            <span className="block text-sm font-semibold tracking-tight text-ink">Analiva</span>
-            <span className="block text-xs text-muted">Automation Hub</span>
-          </span>
+        <div className="flex items-center justify-between gap-4">
+          <div className="shell-brand">
+            <Image className="shell-mark" src="/brand/analiva-mark.png" width={34} height={34} alt="" unoptimized />
+            <span className="shell-wordmark">analiva</span>
+          </div>
+          <ThemeToggle />
         </div>
         <div className="mx-auto w-full max-w-sm py-12">
-          <h1 data-reveal className="font-display text-[30px] font-semibold leading-tight tracking-tight text-ink">
+          <h1 data-reveal className="editorial-heading text-[48px] font-normal leading-tight tracking-tight text-ink">
             {title}
           </h1>
           {subtitle ? (
@@ -39,8 +41,9 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
       <aside className="auth-panel relative hidden overflow-hidden lg:flex lg:flex-col lg:justify-end">
         <div className="auth-orb auth-orb-a" aria-hidden />
         <div className="auth-orb auth-orb-b" aria-hidden />
+        <div className="auth-constellation" aria-hidden><i /><i /><i /></div>
         <div className="relative z-10 max-w-lg p-14">
-          <p className="font-display text-[40px] font-semibold leading-[1.08] tracking-tight text-white">Less capturing. More accounting.</p>
+          <p className="editorial-heading text-[58px] font-normal leading-[1.08] tracking-tight text-white">Less capturing. More accounting.</p>
           <ul className="mt-10 space-y-5">
             {POINTS.map((p) => (
               <li key={p.title} className="flex gap-4">

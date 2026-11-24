@@ -31,7 +31,7 @@ export default async function PortalInvoicesPage({ searchParams }: { searchParam
         {invoices.length === 0 ? (
           <Empty icon={Receipt}>Nothing captured yet.</Empty>
         ) : (
-          <Table head={["Date", "Number", direction === "PAYABLE" ? "Supplier" : "Customer", "Total", "Outstanding", ""]} align={["left", "left", "left", "right", "right", "left"]}>
+          <Table mobilePrimary={1} mobilePreview={3} head={["Date", "Number", direction === "PAYABLE" ? "Supplier" : "Customer", "Total", "Outstanding", ""]} align={["left", "left", "left", "right", "right", "left"]}>
             {invoices.map((i) => {
               const owed = i.totalCents - i.amountPaidCents;
               const overdue = owed > 0n && i.dueDate && i.dueDate < today;

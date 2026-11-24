@@ -87,6 +87,14 @@ enum CaptureStatus {
 }
 
 enum DocumentKind {
+  BANK_STATEMENT
+  BUSINESS_PLAN
+  PURCHASE_ORDER
+  RECEIPT
+  PROPOSAL
+  QUOTE
+  CREDIT_NOTE
+  REMITTANCE
   INVOICE
   STATEMENT
   CIPC
@@ -243,6 +251,8 @@ model Practice {
   enquiries    Enquiry[]
   enquiryMessages EnquiryMessage[]
   outboundEmails OutboundEmail[]
+  marketingLeads MarketingLead[]
+  marketingCampaigns MarketingCampaign[]
 }
 
 model User {
@@ -519,6 +529,8 @@ model Document {
   /// Null for practice-level documents (never visible to client roles)
   clientId         String?
   kind             DocumentKind   @default(OTHER)
+  classificationMethod String?
+  needsClassificationReview Boolean @default(false)
   source           DocumentSource @default(UPLOAD)
   filename         String
   mimeType         String
@@ -954,4 +966,68 @@ model OutboundEmail {
 
   @@index([clientId, createdAt])
   @@index([invoiceId])
+}
+
+enum LeadStage {
+  NEW
+  CONTACTED
+  QUALIFIED
+  WON
+  CLOSED
+}
+
+enum LeadInterest {
+  REPORTING
+  BOOKKEEPING
+  PAYROLL
+}
+
+enum LeadSource {
+  WEBSITE
+  INBOX
+  REFERRAL
+  IMPORT
+  MANUAL
+}
+
+model MarketingLead {
+  id              String       @id @default(cuid())
+  practiceId      String
+  email           String
+  name            String
+  company         String
+  interest        LeadInterest
+  source          LeadSource
+  stage           LeadStage    @default(NEW)
+  ownerId         String
+  followUp        String?
+  followUpDate    DateTime?    @db.Date
+  consentAt       DateTime?
+  consentEvidence String?
+  optedOutAt      DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+
+  @@unique([practiceId, email])
+  @@index([practiceId, interest])
+  @@index([practiceId, updatedAt, id])
+}
+
+model MarketingCampaign {
+  id           String       @id @default(cuid())
+  practiceId   String
+  name         String
+  subject      String
+  body         String
+  interest     LeadInterest
+  createdById  String
+  approvedById String?
+  approvedAt   DateTime?
+  createdAt    DateTime     @default(now())
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+
+  @@index([practiceId, createdAt, id])
 }

@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Analiva Automation Hub | Client walkthrough</title>
+<script>
+try {
+  const theme = localStorage.getItem("analiva-hub-theme");
+  if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+} catch {}
+</script>
+<link rel="stylesheet" href="demo.css">
+<script src="demo.js" defer></script>
+<script src="readiness.js" defer></script>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><span class="mark" aria-hidden="true">A</span><strong>Analiva <small>Automation Hub</small></strong></div>
+    <div class="actions">
+      <button id="theme" class="quiet" type="button">Dark mode</button>
+      <button id="reset" class="quiet" type="button">Reset demo</button>
+    </div>
+  </div>
+</header>
+<main class="wrap">
+  <section class="intro">
+    <p class="eyebrow">Client walkthrough · Sample data</p>
+    <h1>From overloaded inbox<br>to ready for reporting.</h1>
+    <p>See the emails that need a decision, follow up for missing documents, and get each client ready for reporting.</p>
+    <nav class="demo-nav" aria-label="Walkthrough">
+      <a href="#month-end">Month-end readiness</a>
+      <a href="#capture">CRM capture</a>
+      <a href="#campaign">Email campaign</a>
+      <a href="#invoice">Invoice handoff</a>
+      <a href="#analiva">analiva.app</a>
+    </nav>
+  </section>
+  <section id="month-end" class="card readiness">
+    <div class="card-head">
+      <div><p class="eyebrow">Maple Studio · October 2026</p><h2>Month-End Readiness Desk</h2></div>
+      <span id="close-status" class="pill" role="status">Awaiting inbox scan</span>
+    </div>
+    <div class="readiness-stats">
+      <div><strong>127</strong><span>Unread emails in sample inbox</span></div>
+      <div><strong id="routine-count">—</strong><span>Routine emails sorted</span></div>
+      <div><strong id="flag-count">—</strong><span>Open flags</span></div>
+    </div>
+    <button id="scan-inbox" type="button">Scan sample inbox</button>
+
+    <div id="readiness-results" hidden>
+      <p id="readiness-summary" class="meta" role="status"></p>
+      <div class="exception-grid">
+        <article class="exception" id="statement-flag">
+          <div class="card-head"><h3>Missing bank statement</h3><span id="statement-state" class="flag-tag">Follow-up needed</span></div>
+          <p>October’s bank statement is still missing. The last email in the thread included September’s statement.</p>
+          <details><summary>See source thread</summary><blockquote><strong>Re: October month-end documents</strong><br>Thandi Dlamini · 3 November<br>“I’ve attached the September statement. I’ll send October separately.”</blockquote></details>
+          <div class="actions">
+            <button id="draft-statement" type="button">Draft follow-up</button>
+          </div>
+          <div id="statement-draft" class="preview" hidden>
+            <label>Reply in original thread
+              <textarea id="follow-up-copy" rows="4">Hi Thandi, could you please reply to this thread with Maple Studio’s October 2026 bank statement? We have September’s statement on file. Thanks!</textarea>
+            </label>
+            <button id="send-statement" type="button">Approve and simulate send</button>
+          </div>
+          <div id="simulate-replies" class="actions" hidden>
+            <button id="wrong-statement" class="quiet" type="button">Simulate wrong-period reply</button>
+            <button id="receive-statement" type="button">Simulate October statement arriving</button>
+          </div>
+          <p id="statement-note" class="meta" role="status"></p>
+        </article>
+
+        <article class="exception" id="duplicate-flag">
+          <div class="card-head"><h3>Possible duplicate invoice</h3><span id="duplicate-state" class="flag-tag">Review needed</span></div>
+          <p>Two emails carry Northline invoice <strong>INV-1042</strong> for <strong>R 1 150.00</strong>.</p>
+          <details id="duplicate-evidence"><summary>Compare both emails</summary>
+            <div class="evidence-pair">
+              <blockquote><strong>Invoice INV-1042</strong><br>Northline Accounts · 28 October<br>INV-1042.pdf · R 1 150.00</blockquote>
+              <blockquote><strong>Fwd: Invoice INV-1042</strong><br>Maple Studio · 30 October<br>Northline-copy.pdf · R 1 150.00</blockquote>
+            </div>
+            <button id="resolve-duplicate" type="button">Keep original and mark duplicate</button>
+          </details>
+          <p id="duplicate-note" class="meta" role="status"></p>
+        </article>
+
+        <article class="exception" id="variance-flag">
+          <div class="card-head"><h3>Purchase order mismatch</h3><span id="variance-state" class="flag-tag">Handoff held</span></div>
+          <p>Invoice <strong>INV-1077</strong> is <strong>R 575.00</strong> above purchase order <strong>PO-0187</strong>.</p>
+          <details><summary>Compare invoice and purchase order</summary>
+            <div class="evidence-pair">
+              <blockquote><strong>PO-0187</strong><br>Approved order · 22 October<br>Total incl. VAT · R 2 300.00</blockquote>
+              <blockquote><strong>INV-1077</strong><br>Supplier invoice · 29 October<br>Total incl. VAT · R 2 875.00</blockquote>
+            </div>
+            <div class="actions">
+              <button id="assign-variance" class="quiet" type="button">Assign to accounts payable</button>
+              <button id="resolve-variance" type="button">Simulate corrected invoice</button>
+            </div>
+          </details>
+          <p id="variance-note" class="meta" role="status"></p>
+        </article>
+      </div>
+
+      <div class="readiness-delivery">
+        <div>
+          <h3>Month-end handoffs</h3>
+          <p class="meta">Simulated destinations for the document pack and reporting status.</p>
+          <ul>
+            <li><strong>DockDigi</strong> · <span id="dockdigi-status">Waiting for approved originals</span></li>
+            <li><strong>analiva.app</strong> · <span id="analiva-close-status">Waiting for readiness confirmation</span></li>
+          </ul>
+          <button id="send-close" type="button" disabled>Simulate month-end handoffs</button>
+        </div>
+        <div><h3>Activity</h3><ol id="close-activity" aria-live="polite"></ol></div>
+      </div>
+    </div>
+  </section>
+  <div class="grid">
+    <div class="workflow">
+      <section id="capture" class="card">
+        <h2>Capture an enquiry</h2>
+        <p>A website enquiry creates a contact, links their company and records the source and email preference.</p>
+        <form id="lead">
+          <div class="fields">
+            <label>Name <input name="name" required maxlength="80" value="Thandi Dlamini"></label>
+            <label>Work email <input name="email" type="email" required maxlength="120" value="thandi@example.com"></label>
+            <label>Company <input name="company" required maxlength="80" value="Maple Studio"></label>
+            <label>Service interest <select name="service"><option>Monthly reporting</option><option>Bookkeeping</option><option>Payroll</option></select></label>
+          </div>
+          <label class="check"><input name="consent" type="checkbox" checked> Opted in to marketing emails</label>
+          <button type="submit">Capture enquiry</button>
+        </form>
+      </section>
+      <section id="campaign" class="card">
+        <h2>Preview a campaign</h2>
+        <p>Build an audience from service interest and email preference. Pick a subject line and simulate a reply to create a follow-up task.</p>
+        <div class="fields">
+          <label>Audience <select id="segment"><option>Monthly reporting</option><option>Bookkeeping</option><option>Payroll</option></select></label>
+          <label>Subject variant <select id="variant"><option value="a">A · Service introduction</option><option value="b">B · Discovery call</option></select></label>
+        </div>
+        <div class="preview" aria-live="polite">
+          <strong id="subject"></strong>
+          <p id="body"></p>
+          <p id="audience" class="meta"></p>
+        </div>
+        <div class="actions">
+          <button id="send" disabled>Simulate send</button>
+          <button id="reply" class="quiet" disabled>Simulate reply</button>
+        </div>
+      </section>
+      <section id="invoice" class="card">
+        <div class="card-head"><h2>Process an invoice</h2><span class="pill">Sample supplier invoice</span></div>
+        <p>The Hub extracts and validates the invoice. Once the company is linked, a successful processing run automatically hands it to analiva.app for capture.</p>
+        <dl class="exchange invoice-data">
+          <div><dt>Invoice</dt><dd>INV-DEMO-1042</dd></div>
+          <div><dt>Supplier</dt><dd>Northline Office Supplies</dd></div>
+          <div><dt>Subtotal</dt><dd>R 1 000.00</dd></div>
+          <div><dt>VAT · 15%</dt><dd>R 150.00</dd></div>
+          <div><dt>Total</dt><dd>R 1 150.00</dd></div>
+        </dl>
+        <ol class="invoice-stages" aria-label="Invoice handoff status">
+          <li id="invoice-stage-process">Process in the Hub</li>
+          <li id="invoice-stage-send">Send to analiva.app</li>
+          <li id="invoice-stage-capture">Capture in analiva.app</li>
+        </ol>
+        <button id="process-invoice" disabled>Process sample invoice</button>
+        <p id="invoice-status" class="meta" role="status">Capture the sample enquiry to assign the invoice to a company.</p>
+        <div id="invoice-receipt" class="preview" hidden>
+          <strong>Analiva capture confirmation</strong>
+          <p id="invoice-reference"></p>
+        </div>
+      </section>
+      <section id="analiva" class="card">
+        <div class="card-head"><h2>analiva.app integration</h2><span id="approval" class="pill">Awaiting client approval</span></div>
+        <p>The Hub manages the relationship and follow-up. analiva.app handles financial reporting. This walkthrough simulates linking a company, capturing its invoice and receiving report status.</p>
+        <dl class="exchange">
+          <div><dt>Hub → analiva.app</dt><dd>Company reference and validated invoice details</dd></div>
+          <div><dt>analiva.app → Hub</dt><dd>Invoice capture reference and report-ready status</dd></div>
+        </dl>
+        <div class="actions">
+          <button id="approve" class="quiet" disabled>Simulate client approval</button>
+          <button id="link" disabled>Link sample company</button>
+          <button id="report" class="quiet" disabled>Simulate report ready</button>
+        </div>
+        <p id="integration" class="meta" aria-live="polite">Capture an enquiry to try the approval and linking flow.</p>
+      </section>
+    </div>
+    <aside class="card record">
+      <h2>CRM record</h2>
+      <p id="empty">Capture the sample enquiry to see the contact and activity here.</p>
+      <div id="record" hidden>
+        <h3 id="contact"></h3>
+        <p id="company" class="contact-company"></p>
+        <dl id="details"></dl>
+        <h3 class="activity-title">Activity</h3>
+        <ol id="activity" aria-live="polite"></ol>
+      </div>
+    </aside>
+  </div>
+  <footer>All emails, approvals, invoice handoffs and reporting events are simulated. This demo uses no live client data.</footer>
+</main>
+</body>
+</html>

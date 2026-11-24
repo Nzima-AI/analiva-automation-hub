@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { ImapFlow } from "imapflow";
 import { simpleParser, type Attachment, type ParsedMail } from "mailparser";
 import {
+  classifyAttachment,
   classifyEmail,
   confidenceGate,
   isDocumentAttachment,
@@ -17,11 +18,13 @@ import { audit, rootDb, tenantDb, type TenantDb } from "@aah/db";
 import { secretsKey, serverEnv } from "@/lib/env";
 import { checkInvoice, createInvoice } from "@/lib/invoice-service";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { classifyDocumentWithAi } from "./classify-document-ai";
 import { toExtractedJson } from "./extracted";
 import { hintsFor, rememberSupplier, supplierKeys } from "./learning";
 
 const MAX_MESSAGES_PER_ACCOUNT = 15;
 const MAX_OCR_PER_MESSAGE = 2;
+const MAX_AI_PER_MESSAGE = 2;
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 const MIN_IMAGE_BYTES = 8 * 1024; // smaller images are signature logos
 const FIRST_SYNC_LOOKBACK_DAYS = 3;
@@ -103,7 +106,7 @@ async function pollAccount(accountId: string, deadline: number): Promise<PollSum
         // source fetch uses BODY.PEEK, so messages stay unread in the mailbox
         const msg = await client.fetchOne(String(uid), { source: true, internalDate: true }, { uid: true });
         if (msg && msg.source) {
-          const outcome = await processMessage(db, ctx, account, uid, uidValidity, msg.source, msg.internalDate ? new Date(msg.internalDate) : new Date());
+          const outcome = await processMessage(db, ctx, account, uid, uidValidity, msg.source, msg.internalDate ? new Date(msg.internalDate) : new Date(), deadline);
           summary.fetched += outcome.stored ? 1 : 0;
           summary.filed += outcome.filed;
           summary.queued += outcome.queued;
@@ -163,6 +166,7 @@ async function processMessage(
   uidValidity: string,
   source: Buffer,
   internalDate: Date,
+  deadline: number,
 ): Promise<{ stored: boolean; filed: number; queued: number }> {
   const parsed = await simpleParser(source);
   const messageId = (parsed.messageId ?? `uid-${uidValidity}-${uid}`).slice(0, 500);
@@ -253,6 +257,7 @@ async function processMessage(
 
   let filed = 0;
   let queued = 0;
+  let aiAttempts = 0;
   for (const d of docs) {
     const path = `${account.practiceId}/${clientId ?? "practice"}/${year}/${randomUUID()}-${safeName(d.filename)}`;
     const up = await storage.upload(path, d.att.content, { contentType: d.mimeType });
@@ -262,14 +267,23 @@ async function processMessage(
     }
     const text = d.extraction?.text ?? "";
     const firstPass = text ? parseInvoiceText(text, { excludeVatNumbers: [practice?.vatNumber, matchedClient?.vatNumber].filter((v): v is string => !!v) }) : null;
-    const isCandidate =
-      classification.kind !== "STATEMENT" && classification.kind !== "CIPC" && (classification.kind === "INVOICE" || !!firstPass?.looksLikeInvoice);
+    const input = {
+      filename: d.filename, text, subject: docs.length === 1 ? subject : "",
+      singleAttachment: docs.length === 1, looksLikeInvoice: !!firstPass?.looksLikeInvoice,
+    };
+    const ruleKind = classifyAttachment(input);
+    const aiKind = !ruleKind && aiAttempts++ < MAX_AI_PER_MESSAGE
+      ? await classifyDocumentWithAi(input, Math.min(4500, deadline - Date.now()))
+      : null;
+    const kind = ruleKind ?? aiKind ?? "OTHER";
 
     const doc = await db.document.create({
       data: {
         practiceId: account.practiceId,
         clientId,
-        kind: isCandidate ? "INVOICE" : classification.kind === "STATEMENT" ? "STATEMENT" : classification.kind === "CIPC" ? "CIPC" : "OTHER",
+        kind,
+        classificationMethod: ruleKind ? "rules" : aiKind ? "ai" : null,
+        needsClassificationReview: kind === "OTHER",
         source: "EMAIL",
         filename: d.filename.slice(0, 255),
         mimeType: d.mimeType,
@@ -279,7 +293,7 @@ async function processMessage(
         emailMessageId: email.id,
       },
     });
-    if (!isCandidate) continue;
+    if (kind !== "INVOICE") continue;
 
     const outcome = await captureDocument(db, ctx, {
       clientId,
@@ -292,7 +306,7 @@ async function processMessage(
       extraction: d.extraction,
       excludeVat: [practice?.vatNumber, matchedClient?.vatNumber].filter((v): v is string => !!v),
       matchStatus: match.status,
-      policy,
+      policy: aiKind ? { ...policy, mode: "ALWAYS_REVIEW" } : policy,
     });
     if (outcome === "FILED") filed++;
     else queued++;

@@ -24,36 +24,37 @@ export function MotionLayer() {
   const progress = useRef<gsap.core.Tween | null>(null);
   const first = useRef(true);
 
-  // Preloader exit (first paint only).
   useEffect(() => {
-    const el = document.getElementById("app-preloader");
-    const done = () => document.documentElement.classList.add("preloaded");
-    if (!el) return done();
-    if (reducedMotion()) return done();
-    const tl = gsap.timeline({ onComplete: done });
-    tl.to(el.querySelector(".pl-inner"), { y: -8, opacity: 0, duration: 0.35, ease: "power2.in", delay: 0.15 }).to(el, { opacity: 0, duration: 0.35, ease: "power1.out" }, "-=0.1");
-    return () => {
-      tl.kill();
-    };
+    const root = document.documentElement;
+    const preloader = document.getElementById("app-preloader");
+    if (!preloader || !root.classList.contains("intro-pending")) return;
+    const finish = () => root.classList.remove("intro-pending");
+    if (reducedMotion()) return finish();
+
+    const timeline = gsap.timeline({ onComplete: finish });
+    timeline
+      .from(preloader.querySelector(".pl-mark"), { y: 7, scale: 0.92, duration: 0.32, ease: "power3.out" })
+      .to(preloader.querySelector(".pl-inner"), { y: -12, opacity: 0, duration: 0.29, ease: "power2.in" }, 0.27)
+      .to(preloader, { opacity: 0, duration: 0.36, ease: "power2.out" }, 0.31);
+
+    return () => { timeline.kill(); };
   }, []);
 
-  // Reveal choreography on route change.
   useEffect(() => {
-    const html = document.documentElement;
-    const targets = gsap.utils.toArray<HTMLElement>("main [data-reveal]");
-    html.classList.remove("reveal-pending");
-    if (reducedMotion() || targets.length === 0) {
-      gsap.set(targets, { clearProps: "all" });
-      return;
-    }
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        targets,
-        { opacity: 0, y: 14 },
-        { opacity: 1, y: 0, duration: 0.7, ease: EASE, stagger: { each: 0.045, from: "start" }, delay: first.current ? 0.25 : 0, clearProps: "transform" },
-      );
-    });
+    if (reducedMotion()) return;
+    const targets = gsap.utils.toArray<HTMLElement>("main [data-reveal]").filter((element) => {
+      return element.getBoundingClientRect().top < window.innerHeight + 32;
+    }).slice(0, 10);
+    const intro = first.current && document.documentElement.classList.contains("intro-pending");
     first.current = false;
+    if (!targets.length) return;
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(targets, { opacity: 0, y: 13 }, {
+        opacity: 1, y: 0, duration: 0.52, ease: EASE, stagger: 0.045,
+        delay: intro ? 0.34 : 0, clearProps: "opacity,transform",
+      });
+    });
     return () => ctx.revert();
   }, [pathname]);
 
@@ -63,7 +64,13 @@ export function MotionLayer() {
       if (!bar.current || reducedMotion()) return;
       progress.current?.kill();
       gsap.set(bar.current, { scaleX: 0, opacity: 1 });
-      progress.current = gsap.to(bar.current, { scaleX: 0.85, duration: 6, ease: "power3.out" });
+      progress.current = gsap.to(bar.current, {
+        scaleX: 0.85, duration: 4, ease: "power3.out", overwrite: true,
+        onComplete: () => {
+          if (bar.current) gsap.to(bar.current, { opacity: 0, duration: 0.25, overwrite: "auto" });
+          progress.current = null;
+        },
+      });
     };
     const onClick = (e: MouseEvent) => {
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;

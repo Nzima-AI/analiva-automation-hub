@@ -10,13 +10,13 @@ export interface EmailForClassification {
   attachments: Array<{ filename: string; mimeType: string }>;
 }
 
-const DOC_TYPES = /^(application\/pdf|image\/(png|jpe?g|webp|tiff|heic))$/i;
+const DOC_TYPES = /^(application\/(pdf|msword|rtf|vnd\.ms-(excel|powerpoint)|vnd\.openxmlformats-officedocument\.(wordprocessingml\.document|spreadsheetml\.sheet|presentationml\.presentation)|vnd\.oasis\.opendocument\.(text|spreadsheet|presentation))|text\/(csv|plain|tab-separated-values|rtf)|image\/(png|jpe?g|webp|tiff|heic|bmp))$/i;
 const INVOICE_WORDS = /\b(?:tax\s*invoice|invoice|bill|account\s*(?:due|statement)?|payment\s*due|amount\s*due|remittance|receipt)\b|\binv[\s#_-]?\d/i;
 const STATEMENT_WORDS = /\bstatement\b/i;
 const CIPC_WORDS = /\b(cipc|annual\s*return|beneficial\s*ownership|company\s*registration|b-?bbee|cor\s*\d{2})\b/i;
 
 export function isDocumentAttachment(a: { mimeType: string; filename: string }): boolean {
-  return DOC_TYPES.test(a.mimeType) || /\.(pdf|png|jpe?g|webp|tiff?|heic)$/i.test(a.filename);
+  return DOC_TYPES.test(a.mimeType) || /\.(pdf|png|jpe?g|webp|tiff?|heic|bmp|docx?|xlsx?|pptx?|rtf|csv|tsv|txt|odt|ods|odp)$/i.test(a.filename);
 }
 
 export function classifyEmail(e: EmailForClassification): { kind: EmailKind; reason: string } {

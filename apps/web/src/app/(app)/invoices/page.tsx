@@ -93,7 +93,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
         {invoices.length === 0 ? (
           <Empty>No invoices match.</Empty>
         ) : (
-          <Table head={["Date", "Number", "Client", "Supplier / customer", "Total", "Status"]}>
+          <Table mobilePrimary={1} mobilePreview={4} head={["Date", "Number", "Client", "Supplier / customer", "Total", "Status"]}>
             {invoices.map((i) => (
               <tr key={i.id} className="hover:bg-canvas">
                 <Td className="tabular whitespace-nowrap">{formatCalendarDate(i.issueDate)}</Td>

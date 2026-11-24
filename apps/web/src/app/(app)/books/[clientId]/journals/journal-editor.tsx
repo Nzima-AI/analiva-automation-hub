@@ -1,5 +1,6 @@
 "use client";
 
+import { ReportTableDisclosure } from "@/components/table-disclosure";
 import { useMemo, useState } from "react";
 import { Plus, Trash } from "@phosphor-icons/react";
 import { Button, Field, Input, Select } from "@/components/ui";
@@ -39,6 +40,7 @@ export function JournalEditor({ action, accounts }: { action: (fd: FormData) => 
         </Field>
       </div>
       <div className="overflow-x-auto scroll-thin">
+        <ReportTableDisclosure>
         <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-faint">
@@ -95,6 +97,7 @@ export function JournalEditor({ action, accounts }: { action: (fd: FormData) => 
             </tr>
           </tfoot>
         </table>
+        </ReportTableDisclosure>
       </div>
       <input type="hidden" name="lines" value={JSON.stringify(lines)} />
       <Button type="submit" disabled={!balanced}>

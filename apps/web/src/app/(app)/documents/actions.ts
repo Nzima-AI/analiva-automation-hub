@@ -5,9 +5,10 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { isPracticeRole } from "@aah/core";
 import { audit } from "@aah/db";
+import { fail } from "@/lib/forms";
 import { serverEnv } from "@/lib/env";
 import { DOCUMENT_KINDS } from "@/lib/documents";
-import { requireSession } from "@/lib/session";
+import { requireSession, requireStaff } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 
@@ -132,4 +133,27 @@ export async function deleteDocument(documentId: string): Promise<void> {
   await audit(session.ctx, { action: "document.deleted", entityType: "Document", entityId: doc.id, clientId: doc.clientId }, session.user.name);
   revalidatePath("/documents");
   if (doc.clientId) revalidatePath(`/clients/${doc.clientId}`);
+}
+
+
+export async function classifyDocument(documentId: string, formData: FormData) {
+  const { db, ctx, user } = await requireStaff();
+  const kind = z.enum(DOCUMENT_KINDS).safeParse(formData.get("kind"));
+  if (!kind.success) fail("/documents?review=1", "Choose a document category.");
+
+  await db.$transaction(async (tx) => {
+    const updated = await tx.document.updateManyAndReturn({
+      where: { id: documentId, deletedAt: null, source: "EMAIL", OR: [{ needsClassificationReview: true }, { kind: { not: kind.data } }] },
+      data: { kind: kind.data, classificationMethod: "manual", needsClassificationReview: false },
+      select: { id: true, clientId: true },
+    });
+    if (!updated[0]) return;
+    await tx.auditLog.create({
+      data: { practiceId: ctx.practiceId, clientId: updated[0].clientId, actorType: "USER", actorId: user.id,
+        actorLabel: user.name, action: "document.classified", entityType: "Document", entityId: documentId,
+        metadata: { kind: kind.data },
+      },
+    });
+  });
+  revalidatePath("/documents");
 }

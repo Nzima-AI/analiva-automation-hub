@@ -74,20 +74,16 @@ The Invoices and Documents tabs load the newest records first. When you search, 
     id: "inbox",
     audience: "staff",
     title: "Inbox capture",
-    summary: "How emailed invoices are fetched, read and matched to clients.",
+    summary: "How email attachments are read, classified and stored.",
     body: `Connected mailboxes are checked every five minutes. Use **Check inbox now** on the Review queue or Inbox page to check straight away. Emails stay unread in your mailbox.
 
-For each new email the hub:
-1. Stores the original email and every attachment.
-2. Reads the text out of PDFs, or uses OCR on photos (up to two per email).
-3. Sorts the email: invoice, statement, CIPC, query or other.
-4. Matches it to a client using the sender, previous assignments, client contacts and domains, and the client's VAT number, registration number or name printed on the document. If more than one client could match, it asks you.
-5. Reads the supplier, VAT number, invoice number, dates, subtotal, VAT and total.
-6. Files the invoice, or puts it in the review queue, according to the client's review setting.
+1. The Hub stores the original email and accepted document attachments up to 20 MB each.
+2. It reads text from PDFs, modern Office and OpenDocument files, and CSV or plain text. It attempts OCR on up to two supported images per email.
+3. It classifies each attachment separately. Examples include purchase orders, receipts, bank statements, business plans, proposals, quotes, contracts and invoices.
+4. If the rules are uncertain, an AI classifier can suggest a category when configured. Anything still unclear appears under **Documents → Needs classification**, where staff can choose a category.
+5. The Hub matches the email to a client using the sender, previous assignments, client contacts and document text. Only invoice captures enter the invoice workflow.
 
-**Inbox** lists every fetched email, how it was sorted and what happened to it.
-
-> Scanned PDFs (pictures inside a PDF) have no text, so they go to the review queue for you to fill in.`,
+Use the category filter in **Documents** to find stored originals. Image-only PDFs and older Office formats can be stored and may need manual classification.`,
   },
   {
     id: "review",

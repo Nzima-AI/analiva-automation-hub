@@ -14,10 +14,12 @@
   },
   "dependencies": {
     "tesseract.js": "7.0.0",
-    "unpdf": "1.9.1"
+    "unpdf": "1.9.1",
+    "yauzl": "3.4.0"
   },
   "devDependencies": {
     "@types/node": "22.19.1",
+    "@types/yauzl": "3.4.0",
     "typescript": "5.9.3"
   }
 }

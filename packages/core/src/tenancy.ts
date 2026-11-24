@@ -78,6 +78,8 @@ export const MODEL_OWNERSHIP: Record<string, Ownership> = {
   Enquiry: "client",
   EnquiryMessage: "client",
   OutboundEmail: "client",
+  MarketingLead: "practice",
+  MarketingCampaign: "practice",
 };
 
 const READ_OPS = new Set([

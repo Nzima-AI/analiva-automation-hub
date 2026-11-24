@@ -1,12 +1,12 @@
 /**
- * Get readable text out of an attachment, for the rule-based invoice reader.
+ * Get readable text out of an attachment for classification and invoice capture.
  * - PDFs: the embedded text layer (most emailed invoices are generated, not scanned).
  * - Images: OCR with Tesseract (slow; English only).
  * - Scanned PDFs (no text layer): reported as such for manual capture.
  *   TODO(confirm): render scanned PDF pages to images for OCR if this is common.
  */
 
-export type ExtractionMethod = "pdf-text" | "ocr" | "pdf-no-text" | "unsupported" | "failed";
+export type ExtractionMethod = "pdf-text" | "plain-text" | "office-text" | "ocr" | "pdf-no-text" | "unsupported" | "failed";
 
 export interface ExtractionResult {
   text: string;
@@ -22,6 +22,16 @@ export async function extractText(data: Uint8Array, mimeType: string, filename: 
   const isImage = /^image\/(png|jpe?g|webp|tiff|bmp)$/i.test(mimeType) || /\.(png|jpe?g|webp|tiff?|bmp)$/i.test(filename);
 
   try {
+    if (/^text\/(plain|csv|tab-separated-values)$/i.test(mimeType) || /\.(txt|csv|tsv)$/i.test(filename)) {
+      const text = new TextDecoder().decode(data.subarray(0, 32_768)).trim();
+      return { text, method: "plain-text", note: null };
+    }
+    if (/\.(docx|xlsx|pptx|odt|ods|odp)$/i.test(filename) ||
+      /^application\/vnd\.(?:openxmlformats-officedocument|oasis\.opendocument)\./i.test(mimeType)) {
+      const { readOfficeText } = await import("./office-text");
+      const text = await readOfficeText(data);
+      return { text, method: "office-text", note: text ? null : "No readable text found in the document." };
+    }
     if (isPdf) {
       const { extractText: pdfText, getDocumentProxy } = await import("unpdf");
       const pdf = await getDocumentProxy(new Uint8Array(data));

@@ -1,3 +1,4 @@
+import { ReportTableDisclosure } from "@/components/table-disclosure";
 import Link from "next/link";
 import { BookOpen, PencilLine } from "@phosphor-icons/react/dist/ssr";
 import { formatCents } from "@aah/core";
@@ -64,6 +65,7 @@ export default async function JournalsPage({ params, searchParams }: { params: P
                       </span>
                       <span className="font-medium tabular">{formatCents(total)}</span>
                     </summary>
+                    <ReportTableDisclosure>
                     <table className="mt-3 w-full text-sm">
                       <tbody>
                         {e.lines.map((l) => (
@@ -80,6 +82,7 @@ export default async function JournalsPage({ params, searchParams }: { params: P
                         ))}
                       </tbody>
                     </table>
+                    </ReportTableDisclosure>
                     {(e.source === "MANUAL" || e.source === "OPENING") && !e.reversedBy ? (
                       <form action={reverseJournalEntry.bind(null, clientId, e.id)} className="mt-2 flex justify-end gap-2 pl-28">
                         <input name="reason" placeholder="Reason" className="h-8 rounded-lg border border-line bg-panel px-2 text-xs" />

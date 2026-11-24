@@ -1,5 +1,6 @@
 import Link from "next/link";
-import type { ComponentProps, ReactNode } from "react";
+import { Children, cloneElement, isValidElement, type ComponentProps, type ReactNode } from "react";
+import { ResponsiveCellContent } from "./table-disclosure";
 import type { Icon } from "@phosphor-icons/react";
 import { CountUp } from "@/components/motion/count-up";
 
@@ -13,7 +14,7 @@ const buttonBase =
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] disabled:opacity-50 disabled:pointer-events-none active:translate-y-px active:scale-[0.98]";
 const buttonSizes = { sm: "h-8 px-3 text-xs", md: "h-9 px-3.5", lg: "h-11 px-5 text-[15px]" };
 const buttonVariants = {
-  primary: "btn-sheen bg-gradient-to-b from-brand to-brand-strong text-white shadow-[0_1px_0_rgb(255_255_255/0.25)_inset,0_6px_16px_-6px_rgb(0_134_195/0.6)] hover:from-brand-strong hover:to-brand-deep hover:shadow-[0_1px_0_rgb(255_255_255/0.25)_inset,0_10px_22px_-8px_rgb(0_134_195/0.7)]",
+  primary: "btn-sheen bg-gradient-to-b from-[#0074a4] to-[#005d88] text-white shadow-[0_1px_0_rgb(255_255_255/0.25)_inset,0_6px_16px_-6px_rgb(0_134_195/0.6)] hover:from-[#006893] hover:to-[#034d72] hover:shadow-[0_1px_0_rgb(255_255_255/0.25)_inset,0_10px_22px_-8px_rgb(0_134_195/0.7)]",
   secondary: "border border-line bg-panel text-ink shadow-xs hover:bg-subtle hover:border-line-strong",
   danger: "border border-danger/30 bg-panel text-danger hover:bg-danger-soft",
   ghost: "text-muted hover:text-ink hover:bg-subtle",
@@ -93,7 +94,7 @@ export function Card({
       data-reveal
       data-spotlight
       className={cx(
-        "edge-light rounded-2xl border border-line bg-panel shadow-[0_1px_0_var(--hl)_inset,var(--shadow-xs)] transition-[border-color,box-shadow] duration-500 hover:border-line-strong hover:shadow-sm",
+        "edge-light rounded-[1.15rem] border border-line bg-panel shadow-[0_1px_0_var(--hl)_inset,var(--shadow-xs)] transition-[border-color,box-shadow] duration-500 hover:border-line-strong hover:shadow-sm",
         className,
       )}
     >
@@ -196,8 +197,8 @@ export function PageHeader({ title, subtitle, actions, eyebrow }: { title: strin
     <div data-reveal className="mb-7 flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
         {eyebrow ? <div className="mb-1.5 text-[13px] font-medium text-brand-text">{eyebrow}</div> : null}
-        <h1 className="font-display text-[28px] font-semibold leading-tight tracking-tight text-ink">{title}</h1>
-        {subtitle ? <div className="mt-1 text-sm text-muted">{subtitle}</div> : null}
+        <h1 className="editorial-heading break-words text-[clamp(2.35rem,5vw,3.5rem)] font-normal leading-[0.98] text-ink">{title}</h1>
+        {subtitle ? <div className="mt-2.5 text-sm text-muted">{subtitle}</div> : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
     </div>
@@ -228,20 +229,45 @@ export function Empty({ children, icon: Icon, action }: { children: ReactNode; i
   );
 }
 
-export function Table({ head, children, align }: { head: ReactNode[]; children: ReactNode; align?: Array<"left" | "right"> }) {
+export function Table({ head, children, align, mobilePrimary = 0, mobilePreview }: {
+  head: ReactNode[];
+  children: ReactNode;
+  align?: Array<"left" | "right">;
+  mobilePrimary?: number;
+  mobilePreview?: number;
+}) {
+  const rows = Children.map(children, (row) => {
+    if (!isValidElement<ComponentProps<"tr">>(row) || row.type !== "tr") return row;
+    const cells = Children.toArray(row.props.children);
+    if (cells.length !== head.length || !cells.every((cell) => isValidElement<ComponentProps<"td">>(cell))) return row;
+
+    return cloneElement(row, {
+      role: "row",
+      className: cx(row.props.className, "record-row"),
+      children: cells.map((cell, index) => {
+        const primary = index === mobilePrimary;
+        return cloneElement(cell, {
+          role: "cell",
+          className: cx(cell.props.className, "record-field", primary && "record-field-primary", index === mobilePreview && "record-field-preview"),
+          children: <ResponsiveCellContent label={head[index]} primary={primary}>{cell.props.children}</ResponsiveCellContent>,
+        });
+      }),
+    });
+  });
+
   return (
-    <div className="-mx-5 overflow-x-auto scroll-thin">
-      <table className="w-full text-left text-sm">
-        <thead>
-          <tr className="border-b border-line text-[11px] font-semibold uppercase tracking-wider text-faint">
+    <div className="record-table-scroll scroll-thin">
+      <table className="record-table w-full text-left text-sm" role="table">
+        <thead role="rowgroup">
+          <tr role="row">
             {head.map((h, i) => (
-              <th key={i} className={cx("whitespace-nowrap px-5 py-2.5", align?.[i] === "right" && "text-right")}>
-                {h}
+              <th key={i} scope="col" role="columnheader" className={cx(align?.[i] === "right" && "text-right")}>
+                {h || <span className="sr-only">Actions</span>}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-line">{children}</tbody>
+        <tbody role="rowgroup">{rows}</tbody>
       </table>
     </div>
   );

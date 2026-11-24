@@ -86,7 +86,7 @@ export default async function DashboardPage() {
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div className="min-w-0">
             <p className="text-[13px] font-medium text-[#5fd3ff]">{dateLine}</p>
-            <h1 className="mt-2 font-display text-[34px] font-semibold leading-[1.1] tracking-tight text-white">
+            <h1 className="mt-2 editorial-heading text-[clamp(2.7rem,5vw,4.5rem)] font-normal leading-[1.1] tracking-tight text-white">
               {greeting()}, {user.name.split(" ")[0]}
             </h1>
             <p className="mt-2 max-w-[52ch] text-sm text-white/65">
@@ -95,7 +95,7 @@ export default async function DashboardPage() {
                 : "Everything is up to date. New mail is checked every five minutes."}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <ButtonLink href="/invoices/new" variant="ghost" className="border border-white/15 text-white/85 hover:bg-white/10 hover:text-white">
               <Receipt className="h-4 w-4" /> Capture invoice
             </ButtonLink>
