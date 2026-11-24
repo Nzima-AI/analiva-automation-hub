@@ -46,6 +46,13 @@ export const AUDIT_ACTIONS = [
   "email.failed",
   "mandate.recorded",
   "mandate.revoked",
+  "lead.imported",
+  "lead.signed_up",
+  "campaign.queued",
+  "campaign.sent",
+  "campaign.cancelled",
+  "whatsapp.connected",
+  "whatsapp.replied",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

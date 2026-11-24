@@ -12,7 +12,7 @@ export const staffTour = [
     action: "See the review queue", href: "/review",
   },
   {
-    icon: "crm", area: "Leads & campaigns", title: "Keep the next conversation moving.",
+    icon: "crm", area: "Marketing", title: "Keep the next conversation moving.",
     description: "Capture an enquiry as a lead, assign an owner and set a follow-up date. Draft campaigns for opted-in audiences and let a workspace owner approve them. Live campaign delivery is pending setup.",
     proof: ["Enquiry captured", "Owner and follow-up assigned", "Campaign draft ready for approval"],
     action: "Explore leads and campaigns", href: "/marketing",

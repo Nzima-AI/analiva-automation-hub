@@ -33,7 +33,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           title: "Clients",
           items: [
             { href: "/clients", label: "Clients", icon: "clients" },
-            { href: "/marketing", label: "Leads & campaigns", icon: "enquiries" },
+            { href: "/marketing", label: "Marketing", icon: "enquiries" },
             { href: "/lookup", label: "Records", icon: "lookup" },
           ],
         },

@@ -59,6 +59,8 @@ Full design spec lives in the shared doc "Accounting Automation System – Desig
 | Hosting | Start simple (Vercel plus managed Postgres, or a single VPS); keep deployable with Docker |
 | Testing | Vitest, Playwright for end-to-end, fixtures for sample invoices |
 
+**Decided 2026-11-24 (ADR 0004):** marketing campaigns by email (practice mailbox, paced) and WhatsApp (Meta Cloud API directly, no reseller), with per-channel POPIA consent, tracked links, signed Meta webhooks and a minute cron `aah-marketing-send`.
+
 **Decided 2026-10-22 (ADR 0001):** the platform runs on Supabase (Postgres, Auth with TOTP two-step login, Storage), GitHub and Vercel. No Docker. Prisma 7 with the `pg` adapter, Next.js 16, Tailwind 4. Background jobs are deferred to Phase 2 (Vercel Cron + job table, or a Render worker). Tenant scoping: ADR 0002.
 
 ---
@@ -282,4 +284,4 @@ Work through these in order. Finish and test each phase before the next.
 
 ## 16. Next task for Claude
 
-Live checks before every deploy (from apps/web): `scripts/e2e-books.ts` and `scripts/e2e-pages.ts` (demo practice only). Open items: Phase 5 public API and webhooks; automation sequences (Phase 4); per-client sending domains; scanned-PDF OCR; Analiva confirming the ledger CSV import.
+Live checks before every deploy (from apps/web): `scripts/e2e-books.ts` and `scripts/e2e-pages.ts` (demo practice only). Marketing: `scripts/e2e-marketing.ts` against a local Postgres only. Open items: Phase 5 public API and webhooks; automation sequences (Phase 4); per-client sending domains; scanned-PDF OCR; Analiva confirming the ledger CSV import.

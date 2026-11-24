@@ -19,3 +19,4 @@ export * from "./ledger/index";
 export * from "./outbound";
 
 export * from "./capture/document-classification";
+export * from "./marketing";

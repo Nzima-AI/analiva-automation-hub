@@ -253,6 +253,9 @@ model Practice {
   outboundEmails OutboundEmail[]
   marketingLeads MarketingLead[]
   marketingCampaigns MarketingCampaign[]
+  marketingSends     MarketingSend[]
+  whatsAppMessages   WhatsAppMessage[]
+  whatsAppSetting    WhatsAppSetting?
 }
 
 model User {
@@ -993,7 +996,8 @@ enum LeadSource {
 model MarketingLead {
   id              String       @id @default(cuid())
   practiceId      String
-  email           String
+  email              String?
+  phone              String?
   name            String
   company         String
   interest        LeadInterest
@@ -1005,29 +1009,153 @@ model MarketingLead {
   consentAt       DateTime?
   consentEvidence String?
   optedOutAt      DateTime?
+  whatsappConsentAt  DateTime?
+  whatsappOptedOutAt DateTime?
+  tags               String[]     @default([])
+  token              String       @unique @default(cuid())
+  lastClickedAt      DateTime?
+  lastRepliedAt      DateTime?
+  signedUpAt         DateTime?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
   practice Practice @relation(fields: [practiceId], references: [id])
+  sends    MarketingSend[]
 
   @@unique([practiceId, email])
+  @@unique([practiceId, phone])
   @@index([practiceId, interest])
   @@index([practiceId, updatedAt, id])
+  @@index([tags], type: Gin)
 }
 
 model MarketingCampaign {
   id           String       @id @default(cuid())
   practiceId   String
   name         String
+  channel          CampaignChannel @default(EMAIL)
   subject      String
   body         String
-  interest     LeadInterest
+  /// null = every interest
+  interest         LeadInterest?
+  /// Contacts must carry all of these tags; empty = no tag filter.
+  tags             String[]        @default([])
+  /// Where the tracked link in the message sends people (e.g. the Analiva sign-up page).
+  ctaUrl           String?
+  /// WhatsApp: an approved Meta template, its language and what fills {{1}}, {{2}}...
+  whatsappTemplate String?
+  templateLanguage String?
+  templateParams   String[]        @default([])
+  /// A follow-up goes to the recipients of parentId that match followUpRule.
+  parentId         String?
+  followUpRule     FollowUpRule?
+  status           CampaignStatus  @default(DRAFT)
+  scheduledAt      DateTime?
+  startedAt        DateTime?
+  finishedAt       DateTime?
   createdById  String
   approvedById String?
   approvedAt   DateTime?
   createdAt    DateTime     @default(now())
 
   practice Practice @relation(fields: [practiceId], references: [id])
+  parent    MarketingCampaign?  @relation("FollowUps", fields: [parentId], references: [id])
+  followUps MarketingCampaign[] @relation("FollowUps")
+  sends     MarketingSend[]
 
   @@index([practiceId, createdAt, id])
+  @@index([status, scheduledAt])
+}
+
+enum CampaignChannel {
+  EMAIL
+  WHATSAPP
+}
+
+enum CampaignStatus {
+  DRAFT
+  APPROVED
+  SENDING
+  SENT
+  CANCELLED
+}
+
+enum FollowUpRule {
+  NOT_CLICKED
+  CLICKED_NOT_SIGNED_UP
+  SIGNED_UP
+}
+
+enum SendStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  SKIPPED
+}
+
+/// One message of a campaign to one contact.
+model MarketingSend {
+  id          String          @id @default(cuid())
+  practiceId  String
+  campaignId  String
+  leadId      String
+  channel     CampaignChannel
+  toAddress   String
+  status      SendStatus      @default(QUEUED)
+  /// Meta's wamid or the email Message-ID, to match delivery updates.
+  providerId  String?         @unique
+  error       String?
+  token       String          @unique @default(cuid())
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  readAt      DateTime?
+  clickedAt   DateTime?
+  repliedAt   DateTime?
+  signedUpAt  DateTime?
+  createdAt   DateTime        @default(now())
+
+  practice Practice          @relation(fields: [practiceId], references: [id])
+  campaign MarketingCampaign @relation(fields: [campaignId], references: [id])
+  lead     MarketingLead     @relation(fields: [leadId], references: [id])
+
+  @@unique([campaignId, leadId])
+  @@index([status, campaignId])
+  @@index([practiceId, leadId])
+}
+
+/// The practice's WhatsApp Business (Meta Cloud API) number. Token and app secret are encrypted with SECRETS_KEY.
+model WhatsAppSetting {
+  id                   String   @id @default(cuid())
+  practiceId           String   @unique
+  phoneNumberId        String   @unique
+  businessAccountId    String
+  displayNumber        String?
+  accessTokenEncrypted String
+  appSecretEncrypted   String
+  verifyToken          String   @default(cuid())
+  /// Messages sent per cron run; Meta allows far more, this keeps runs short.
+  batchSize            Int      @default(60)
+  updatedAt            DateTime @updatedAt
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+}
+
+/// WhatsApp messages received from contacts (replies, STOP).
+model WhatsAppMessage {
+  id         String    @id @default(cuid())
+  practiceId String
+  leadId     String?
+  fromPhone  String
+  fromName   String?
+  body       String
+  providerId String    @unique
+  optOut     Boolean   @default(false)
+  handledAt  DateTime?
+  receivedAt DateTime  @default(now())
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+
+  @@index([practiceId, receivedAt])
 }
