@@ -38,28 +38,40 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
         </p>
       </section>
 
-      <aside className="auth-panel relative hidden overflow-hidden lg:flex lg:flex-col lg:justify-end">
+      <aside className="auth-panel relative hidden overflow-hidden lg:flex lg:flex-col lg:justify-between">
         <div className="auth-photo" aria-hidden />
         <div className="auth-orb auth-orb-a" aria-hidden />
         <div className="auth-orb auth-orb-b" aria-hidden />
         <div className="auth-constellation" aria-hidden><i /><i /><i /></div>
-        <div className="relative z-10 max-w-lg p-14">
-          <p className="editorial-heading text-[58px] font-normal leading-[1.08] tracking-tight text-white">Less capturing. More accounting.</p>
-          <ul className="mt-10 space-y-5">
-            {POINTS.map((p) => (
-              <li key={p.title} className="flex gap-4">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.15)] backdrop-blur">
-                  <p.icon className="h-5 w-5" />
-                </span>
+        <div className="auth-shade" aria-hidden />
+
+        <div className="relative z-10 flex items-center justify-between p-14 pb-0">
+          <p className="auth-rise flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/55" style={{ "--d": "0.1s" } as React.CSSProperties}>
+            <span className="h-px w-8 bg-white/30" aria-hidden /> Analiva Automation Hub
+          </p>
+          <p className="auth-chip auth-rise" style={{ "--d": "0.9s" } as React.CSSProperties}>
+            <span className="auth-chip-dot" aria-hidden /> Inbox checked every five minutes
+          </p>
+        </div>
+
+        <div className="relative z-10 max-w-xl p-14">
+          <p className="editorial-heading text-[60px] font-normal leading-[1.04] tracking-tight text-white">
+            <span className="auth-line"><span style={{ "--d": "0.2s" } as React.CSSProperties}>Less capturing.</span></span>
+            <span className="auth-line"><span style={{ "--d": "0.35s" } as React.CSSProperties}>More accounting.</span></span>
+          </p>
+          <ul className="mt-10 max-w-md">
+            {POINTS.map((p, i) => (
+              <li key={p.title} className="auth-point auth-rise" style={{ "--d": `${0.55 + i * 0.12}s` } as React.CSSProperties}>
+                <p.icon className="mt-0.5 h-[18px] w-[18px] shrink-0 text-[#7fd8ff]" weight="light" />
                 <span>
                   <span className="block text-[15px] font-medium text-white">{p.title}</span>
-                  <span className="block text-sm text-white/65">{p.body}</span>
+                  <span className="mt-0.5 block text-sm text-white/55">{p.body}</span>
                 </span>
               </li>
             ))}
           </ul>
         </div>
-        <p className="absolute bottom-4 right-6 z-10 text-[10px] text-white/30">
+        <p className="absolute bottom-4 right-6 z-10 text-[10px] text-white/25">
           Photo: <a href="https://commons.wikimedia.org/wiki/File:Night_in_Joburg.jpg" className="hover:text-white/60">South African Tourism</a>,{" "}
           <a href="https://creativecommons.org/licenses/by-sa/2.0/" className="hover:text-white/60">CC BY-SA 2.0</a>
         </p>
