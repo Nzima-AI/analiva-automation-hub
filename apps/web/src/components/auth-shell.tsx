@@ -39,6 +39,7 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
       </section>
 
       <aside className="auth-panel relative hidden overflow-hidden lg:flex lg:flex-col lg:justify-end">
+        <div className="auth-photo" aria-hidden />
         <div className="auth-orb auth-orb-a" aria-hidden />
         <div className="auth-orb auth-orb-b" aria-hidden />
         <div className="auth-constellation" aria-hidden><i /><i /><i /></div>
@@ -58,6 +59,10 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
             ))}
           </ul>
         </div>
+        <p className="absolute bottom-4 right-6 z-10 text-[10px] text-white/30">
+          Photo: <a href="https://commons.wikimedia.org/wiki/File:Night_in_Joburg.jpg" className="hover:text-white/60">South African Tourism</a>,{" "}
+          <a href="https://creativecommons.org/licenses/by-sa/2.0/" className="hover:text-white/60">CC BY-SA 2.0</a>
+        </p>
       </aside>
     </main>
   );

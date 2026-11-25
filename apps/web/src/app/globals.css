@@ -360,6 +360,16 @@ body::after {
     radial-gradient(900px 600px at 110% -10%, rgb(30 192 255 / 0.35), transparent 60%),
     linear-gradient(160deg, #04263a 0%, #031b2b 55%, #020f1a 100%);
 }
+/* A faint night view of Johannesburg behind the brand panel, tinted by the navy field */
+.auth-photo {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: url("/brand/auth-backdrop.jpg") center 62% / cover no-repeat;
+  opacity: 0.26;
+  mix-blend-mode: luminosity;
+  mask-image: linear-gradient(180deg, transparent 0%, black 35%, black 70%, transparent 100%);
+}
 .auth-orb {
   position: absolute;
   border-radius: 9999px;
