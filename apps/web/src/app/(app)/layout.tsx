@@ -9,13 +9,14 @@ import { requireSession } from "@/lib/session";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, practice, ctx, db } = await requireSession();
   const staff = isPracticeRole(ctx.role);
-  const [waiting, bankToCode, enquiriesWaiting] = staff
+  const [waiting, bankToCode, enquiriesWaiting, repliesWaiting] = staff
     ? await Promise.all([
         db.capture.count({ where: { status: { in: ["NEEDS_CLIENT", "SUGGESTED", "NEEDS_REVIEW", "FAILED"] } } }),
         db.bankTransaction.count({ where: { status: "UNMATCHED" } }),
         db.enquiry.count({ where: { status: "OPEN" } }),
+        db.whatsAppMessage.count({ where: { direction: "IN", handledAt: null, optOut: false } }),
       ])
-    : [0, 0, await db.enquiry.count({ where: { status: "AWAITING_CLIENT" } })];
+    : [0, 0, await db.enquiry.count({ where: { status: "AWAITING_CLIENT" } }), 0];
 
   const sections: NavSection[] = staff
     ? [
@@ -23,6 +24,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           title: "Work",
           items: [
             { href: "/", label: "Dashboard", icon: "dashboard", exact: true },
+            { href: "/marketing", label: "WhatsApp marketing", icon: "whatsapp", badge: repliesWaiting },
             { href: "/review", label: "Review queue", icon: "review", badge: waiting },
             { href: "/enquiries", label: "Enquiries", icon: "enquiries", badge: enquiriesWaiting },
             { href: "/inbox", label: "Inbox", icon: "inbox" },
@@ -33,7 +35,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           title: "Clients",
           items: [
             { href: "/clients", label: "Clients", icon: "clients" },
-            { href: "/marketing", label: "Marketing", icon: "enquiries" },
             { href: "/lookup", label: "Records", icon: "lookup" },
           ],
         },

@@ -5,7 +5,7 @@ export const interests = { REPORTING: "Financial reporting", BOOKKEEPING: "Bookk
 export const sources = { WEBSITE: "Website enquiry", INBOX: "Inbox enquiry", REFERRAL: "Referral", IMPORT: "Import", MANUAL: "Manual entry" } as const;
 export const stages = { NEW: "New", CONTACTED: "Contacted", QUALIFIED: "Qualified", WON: "Won", CLOSED: "Closed" } as const;
 export const channels = { EMAIL: "Email", WHATSAPP: "WhatsApp" } as const;
-export const statuses = { DRAFT: "Draft", APPROVED: "Approved", SENDING: "Sending", SENT: "Sent", CANCELLED: "Stopped" } as const;
+export const statuses = { DRAFT: "Draft", APPROVED: "Approved", SENDING: "Sending", SENT: "Sent", CANCELLED: "Stopped", PAUSED: "Paused" } as const;
 
 export function Options({ values }: { values: Record<string, string> }) {
   return Object.entries(values).map(([value, label]) => <option key={value} value={value}>{label}</option>);
@@ -18,12 +18,17 @@ export function formatPhone(phone: string | null) {
 }
 
 const tabs = [
-  { href: "/marketing", label: "Contacts" },
+  { href: "/marketing", label: "Overview" },
   { href: "/marketing/campaigns", label: "Campaigns" },
-  { href: "/marketing/whatsapp", label: "WhatsApp" },
+  { href: "/marketing/inbox", label: "Inbox" },
+  { href: "/marketing/contacts", label: "Contacts" },
+  { href: "/marketing/automations", label: "Automations" },
+  { href: "/marketing/analytics", label: "Analytics" },
+  { href: "/marketing/settings", label: "Settings" },
 ];
 
 export function MarketingTabs({ active, badge }: { active: string; badge?: number }) {
+  // Demo mode banner and tour button live in the page header; the tabs are just navigation.
   return (
     <nav aria-label="Marketing" className="-mt-2 mb-5 flex gap-1 overflow-x-auto border-b border-line">
       {tabs.map((tab) => (
@@ -37,7 +42,7 @@ export function MarketingTabs({ active, badge }: { active: string; badge?: numbe
           )}
         >
           {tab.label}
-          {tab.href === "/marketing/whatsapp" && badge ? <span className="num rounded-full bg-brand px-1.5 text-xs text-white">{badge}</span> : null}
+          {tab.href === "/marketing/inbox" && badge ? <span className="num rounded-full bg-brand px-1.5 text-xs text-white">{badge}</span> : null}
         </Link>
       ))}
     </nav>

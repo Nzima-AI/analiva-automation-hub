@@ -74,7 +74,7 @@ describe("contact import", () => {
       ["No Contact", "", "", "", ""],
       ["", "", "", "", ""],
     ]);
-    expect(contacts).toEqual([{ name: "Thandi Nkosi", phone: "27821234567", email: "thandi@nkosi.example", company: "Nkosi Trading", tags: ["past client", "payroll"], interest: null }]);
+    expect(contacts).toEqual([{ name: "Thandi Nkosi", phone: "27821234567", email: "thandi@nkosi.example", company: "Nkosi Trading", tags: ["past client", "payroll"], interest: null, region: null }]);
     expect(problems).toEqual(["Row 3: No Contact has no usable phone number or email."]);
   });
   it("reads a Google contacts export", () => {
@@ -83,6 +83,10 @@ describe("contact import", () => {
       ["Sipho", "Dube", "Dube CC", "", "+27 71 555 0101 ::: 011 555 0000", "* myContacts ::: Clients"],
     ]);
     expect(contacts[0]).toMatchObject({ name: "Sipho Dube", phone: "27715550101", company: "Dube CC", tags: ["clients"] });
+  });
+  it("reads a region or province column", () => {
+    const { contacts } = contactsFromCsv([["Name", "Mobile", "Province"], ["Sipho", "0711112222", "Gauteng"]]);
+    expect(contacts[0]?.region).toBe("Gauteng");
   });
   it("explains a file it can't use", () => {
     expect(contactsFromCsv([["Company", "Notes"], ["A", "B"]]).problems).toHaveLength(2);

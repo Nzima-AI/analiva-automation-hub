@@ -57,6 +57,8 @@ await tdb.whatsAppSetting.create({
   data: { practiceId: practice.id, phoneNumberId: `${Date.now()}`, businessAccountId: "999", accessTokenEncrypted: encryptSecret("token-abc", process.env.SECRETS_KEY!), appSecretEncrypted: encryptSecret(appSecret, process.env.SECRETS_KEY!), batchSize: 1 },
 });
 const setting = (await tdb.whatsAppSetting.findFirst())!;
+// Send any time of day for the core checks; quiet hours get their own check below.
+await tdb.marketingSettings.create({ data: { practiceId: practice.id, quietStart: 0, quietEnd: 0, skipSundays: false, skipHolidays: false } });
 
 // 1. Audience: consent, opt-out, segment and tenant rules.
 const campaign = await tdb.marketingCampaign.create({
@@ -65,7 +67,7 @@ const campaign = await tdb.marketingCampaign.create({
 assert.deepEqual("error" in (await engine.queueCampaign(tdb, ctx, campaign.id, "t")), true, "a draft can't be sent");
 await tdb.marketingCampaign.updateMany({ where: { id: campaign.id }, data: { status: "APPROVED", approvedAt: now } });
 const queued = await engine.queueCampaign(tdb, ctx, campaign.id, "Tester");
-assert.deepEqual(queued, { queued: 2 }, "only the two permitted past clients are queued");
+assert.ok(!("error" in queued) && queued.queued === 2 && queued.costCents === 140, "only the two permitted past clients are queued, at R0.70 each");
 
 // 2. Batches: batchSize 1 sends one per run; a hard failure is recorded, not retried.
 failNext = 1;
@@ -96,7 +98,7 @@ assert.equal((await tdb.marketingSend.findFirst({ where: { id: ok.id } }))!.stat
 const stop = { messages: [{ id: "wamid.in1", from: ok.toAddress, type: "text", text: { body: "STOP" } }], contacts: [{ wa_id: ok.toAddress, profile: { name: "T" } }] };
 await hook(value(stop));
 await hook(value(stop)); // Meta can deliver twice
-assert.equal(await tdb.whatsAppMessage.count(), 1, "duplicate webhook stored once");
+assert.equal(await tdb.whatsAppMessage.count({ where: { direction: "IN" } }), 1, "duplicate webhook stored once");
 const stopped = (await tdb.marketingLead.findFirst({ where: { id: ok.leadId } }))!;
 assert.ok(stopped.whatsappOptedOutAt, "STOP opts the contact out");
 assert.equal(calls.filter((c) => (c.body.text as { body?: string } | undefined)?.body?.includes("won't receive")).length, 1, "one confirmation reply");
@@ -134,6 +136,67 @@ assert.equal((await tdb.marketingLead.findFirst({ where: { id: allowed2.id } }))
 await unsubscribe.POST(new NextRequest(`https://hub.example/u/${allowed2.token}`, { method: "POST" }), { params: Promise.resolve({ token: allowed2.token }) });
 assert.ok((await tdb.marketingLead.findFirst({ where: { id: allowed2.id } }))!.optedOutAt, "POST unsubscribes");
 
-void noConsent; void optedOut; void otherTag; void allowed;
+// 6. Quiet hours: a send during quiet time is scheduled for the next allowed hour.
+const { saParts, saMoment } = await import("@aah/core");
+const nowHour = saParts(new Date()).hour;
+await tdb.marketingSettings.updateMany({ data: { quietStart: (nowHour + 23) % 24, quietEnd: (nowHour + 2) % 24 } });
+const quiet = await tdb.marketingCampaign.create({ data: { practiceId: practice.id, name: "Quiet", channel: "WHATSAPP", subject: "q", body: "", tags: ["prospect"], whatsappTemplate: "t", status: "APPROVED", createdById: "u" } });
+await engine.queueCampaign(tdb, ctx, quiet.id, "t");
+const quietSend = (await tdb.marketingSend.findFirst({ where: { campaignId: quiet.id } }))!;
+assert.ok(quietSend.sendAfter && quietSend.sendAfter > new Date(), "queued for after quiet hours");
+assert.equal(saParts(quietSend.sendAfter!).hour, (nowHour + 2) % 24);
+void saMoment;
+await tdb.marketingSettings.updateMany({ data: { quietStart: 0, quietEnd: 0 } });
+
+// 7. Reply buttons: "Sign me up" sends the personal link, "Call me back" makes a task, "Not now" snoozes.
+const btnLead = otherTag;
+const btnCampaign = await tdb.marketingCampaign.create({ data: { practiceId: practice.id, name: "Buttons", channel: "WHATSAPP", subject: "b", body: "", tags: ["prospect"], ctaUrl: "https://analiva.example/signup", whatsappTemplate: "t", status: "APPROVED", createdById: "u" } });
+await engine.queueCampaign(tdb, ctx, btnCampaign.id, "t");
+await engine.processQueue({ deadline: Date.now() + 10_000 });
+const btnSend = (await tdb.marketingSend.findFirst({ where: { campaignId: btnCampaign.id } }))!;
+assert.equal(btnSend.status, "SENT");
+const tap = (id: string, text: string) => hook(value({ messages: [{ id, from: btnLead.phone!, type: "button", button: { text } }] }));
+await tap("wamid.b1", "Sign me up");
+const linkReply = calls.at(-1)!;
+assert.match(String((linkReply.body.text as { body: string }).body), new RegExp(`/r/${btnSend.token}`), "personal link sent back");
+await tap("wamid.b2", "Call me back");
+assert.equal(await tdb.marketingTask.count({ where: { leadId: btnLead.id, kind: "CALLBACK" } }), 1);
+await tap("wamid.b3", "Not now");
+assert.ok((await tdb.marketingLead.findFirst({ where: { id: btnLead.id } }))!.snoozedUntil! > new Date(), "snoozed");
+assert.equal(await tdb.whatsAppMessage.count({ where: { fromPhone: btnLead.phone!, direction: "OUT" } }), 3, "three confirmations logged in the thread");
+
+// 8. Budget: a campaign that costs more than what's left is refused.
+await tdb.marketingSettings.updateMany({ data: { monthlyBudgetCents: 50 } });
+const pricey = await tdb.marketingCampaign.create({ data: { practiceId: practice.id, name: "Pricey", channel: "WHATSAPP", subject: "p", body: "", tags: ["past client"], whatsappTemplate: "t", status: "APPROVED", createdById: "u" } });
+const refused = await engine.queueCampaign(tdb, ctx, pricey.id, "t");
+assert.ok("error" in refused && /budget/.test(refused.error!), "over budget refused");
+await tdb.marketingSettings.updateMany({ data: { monthlyBudgetCents: null } });
+
+// 9. Demo mode: nothing reaches Meta; the simulator plays out receipts and replies.
+const { seedDemo } = await import("../src/lib/marketing/automation");
+const before = calls.length;
+const seeded = await seedDemo(tdb, ctx);
+assert.equal(seeded.created, 180, "demo contacts");
+assert.ok((await tdb.marketingSend.count({ where: { simulated: true } })) > 1000, "8 weeks of demo history");
+const demo = await tdb.marketingCampaign.create({ data: { practiceId: practice.id, name: "Demo live", channel: "WHATSAPP", subject: "d", body: "", tags: ["demo"], whatsappTemplate: "analiva_launch", status: "APPROVED", createdById: "u", variantTemplate: "analiva_reminder", testPercent: 20, testHours: 1 } });
+const q = await engine.queueCampaign(tdb, ctx, demo.id, "t");
+assert.ok(!("error" in q) && q.queued > 100);
+await tdb.whatsAppSetting.updateMany({ data: { batchSize: 500 } });
+await engine.processQueue({ deadline: Date.now() + 20_000 });
+assert.equal(calls.length, before, "demo mode never calls Meta");
+const tested = await tdb.marketingSend.count({ where: { campaignId: demo.id, sentAt: { not: null } } });
+assert.ok(tested > 0 && tested <= Math.ceil(q.queued * 0.2) + 1, "only the A/B test group goes first");
+// Pretend the test ran an hour ago, then let the simulator and the winner logic run.
+await tdb.marketingSend.updateMany({ where: { campaignId: demo.id, sentAt: { not: null } }, data: { sentAt: new Date(Date.now() - 2 * 3600_000) } });
+await tdb.marketingCampaign.updateMany({ where: { id: demo.id }, data: { startedAt: new Date(Date.now() - 2 * 3600_000) } });
+await tdb.marketingSend.updateMany({ where: { campaignId: demo.id, variant: null }, data: { sendAfter: null } });
+assert.ok((await engine.simulateReceipts()) > 0, "simulated receipts");
+assert.ok((await tdb.marketingSend.count({ where: { campaignId: demo.id, readAt: { not: null } } })) > 0, "some read");
+await engine.processQueue({ deadline: Date.now() + 20_000 });
+const decided = (await tdb.marketingCampaign.findFirst({ where: { id: demo.id } }))!;
+assert.ok(decided.winner === "A" || decided.winner === "B", "A/B winner chosen");
+assert.ok((await tdb.marketingSend.count({ where: { campaignId: demo.id, variant: null, sentAt: { not: null } } })) > 0, "rest sent after the winner");
+
+void noConsent; void optedOut; void allowed;
 console.log("e2e-marketing: all checks passed");
 process.exit(0);

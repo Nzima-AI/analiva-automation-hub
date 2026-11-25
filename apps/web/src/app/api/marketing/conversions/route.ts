@@ -7,7 +7,7 @@ import { rootDb } from "@aah/db";
 export const dynamic = "force-dynamic";
 
 const body = z.union([
-  z.object({ ref: z.string().min(10).max(40) }),
+  z.object({ ref: z.string().min(10).max(42) }),
   z.object({ practice: z.string().min(1).max(80), email: z.string().email().max(200).optional(), phone: z.string().max(40).optional() }).refine((b) => b.email || b.phone, "email or phone is required"),
 ]);
 
@@ -31,6 +31,13 @@ export async function POST(request: NextRequest) {
   const db = rootDb();
   const input = parsed.data;
   let lead: { id: string; practiceId: string; signedUpAt: Date | null } | null;
+  if ("ref" in input && input.ref.startsWith("R-")) {
+    // A referral: credit the person who shared the link (the new client isn't a contact yet).
+    const referrer = await db.marketingLead.findUnique({ where: { token: input.ref.slice(2) }, select: { id: true, practiceId: true } });
+    if (!referrer) return NextResponse.json({ matched: false });
+    await db.referralEvent.create({ data: { practiceId: referrer.practiceId, referrerId: referrer.id, kind: "SIGNED_UP" } });
+    return NextResponse.json({ matched: true, referral: true });
+  }
   if ("ref" in input) {
     lead = await db.marketingLead.findUnique({ where: { token: input.ref }, select: { id: true, practiceId: true, signedUpAt: true } });
   } else {

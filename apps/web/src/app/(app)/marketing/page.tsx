@@ -1,253 +1,179 @@
 import Link from "next/link";
-import { Prisma } from "@aah/db";
-import { Badge, Button, Card, Field, Input, Notice, PageHeader, Select, StatCard, Textarea } from "@/components/ui";
+import { ArrowRight, Broadcast, ChatCircleDots, Lightning, PaperPlaneTilt, Phone, Sparkle, TrendUp, WhatsappLogo } from "@phosphor-icons/react/dist/ssr";
+import { DAY_NAMES, randFromCents } from "@aah/core";
+import { Funnel } from "@/components/marketing/funnel";
+import { LiveRefresh } from "@/components/marketing/live-refresh";
+import { WhatsAppTourButton } from "@/components/tour/whatsapp-tour";
+import { Badge, Button, ButtonLink, Card, Notice, PageHeader, StatCard } from "@/components/ui";
+import { overviewData } from "@/lib/marketing/analytics";
 import { requireStaff } from "@/lib/session";
-import { captureLead, importContacts, markSignedUp, updateLead } from "./actions";
-import { formatPhone, interests, MarketingTabs, Options, sources, stages } from "./shared";
+import { completeTask, dismissAlert, seedDemoAction } from "./growth-actions";
+import { formatPhone, MarketingTabs, statuses } from "./shared";
 
-export const metadata = { title: "Marketing contacts" };
+export const metadata = { title: "WhatsApp marketing" };
 
-const PAGE = 50;
-const reaches = { any: "Any permission", email: "Can email", whatsapp: "Can WhatsApp", none: "No permission yet", optedout: "Opted out", signedup: "Signed up" } as const;
-type Reach = keyof typeof reaches;
+const hourLabel = (h: number) => `${String(h).padStart(2, "0")}:00`;
 
-function reachWhere(reach: Reach): Prisma.MarketingLeadWhereInput {
-  switch (reach) {
-    case "email": return { email: { not: null }, consentAt: { not: null }, optedOutAt: null };
-    case "whatsapp": return { phone: { not: null }, whatsappConsentAt: { not: null }, whatsappOptedOutAt: null };
-    case "none": return { consentAt: null, whatsappConsentAt: null };
-    case "optedout": return { OR: [{ optedOutAt: { not: null } }, { whatsappOptedOutAt: { not: null } }] };
-    case "signedup": return { signedUpAt: { not: null } };
-    default: return {};
-  }
-}
-
-const str = (value: unknown, max = 200) => (typeof value === "string" ? value.trim().slice(0, max) : "");
-const date = (value: Date | null) => value?.toISOString().slice(0, 10) ?? "";
-
-export default async function MarketingPage({ searchParams }: {
-  searchParams: Promise<Record<string, string | undefined>>;
-}) {
+export default async function MarketingOverview({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const { db, ctx } = await requireStaff();
   const params = await searchParams;
-  const q = str(params.q);
-  const tag = str(params.tag, 40).toLowerCase();
-  const reach: Reach = Object.hasOwn(reaches, params.reach ?? "") ? (params.reach as Reach) : "any";
-  const stage = Object.hasOwn(stages, params.stage ?? "") ? (params.stage as keyof typeof stages) : null;
-  const page = Math.max(1, Math.min(200, Number(params.page) || 1));
-  const leadId = str(params.lead, 40);
-
-  const where: Prisma.MarketingLeadWhereInput = {
-    AND: [
-      q ? { OR: [
-        { name: { contains: q, mode: "insensitive" } },
-        { company: { contains: q, mode: "insensitive" } },
-        { email: { contains: q, mode: "insensitive" } },
-        { phone: { contains: q.replace(/\D/g, "") || q } },
-      ] } : {},
-      tag ? { tags: { has: tag } } : {},
-      stage ? { stage } : {},
-      reachWhere(reach),
-    ],
-  };
-
-  const [leads, matching, total, canEmail, canWhatsapp, signedUp, optedOut, topTags, lead, enquiry] = await Promise.all([
-    db.marketingLead.findMany({ where, orderBy: [{ updatedAt: "desc" }, { id: "desc" }], take: PAGE, skip: (page - 1) * PAGE }),
-    db.marketingLead.count({ where }),
-    db.marketingLead.count(),
-    db.marketingLead.count({ where: reachWhere("email") }),
-    db.marketingLead.count({ where: reachWhere("whatsapp") }),
-    db.marketingLead.count({ where: reachWhere("signedup") }),
-    db.marketingLead.count({ where: reachWhere("optedout") }),
-    // Raw SQL isn't tenant-scoped by the client: the practice filter is explicit.
-    db.$queryRaw<Array<{ tag: string; n: bigint }>>(Prisma.sql`
-      SELECT t AS tag, count(*) AS n FROM "MarketingLead", unnest(tags) AS t
-      WHERE "practiceId" = ${ctx.practiceId} GROUP BY t ORDER BY n DESC, t LIMIT 24`),
-    leadId ? db.marketingLead.findFirst({ where: { id: leadId } }) : null,
-    typeof params.inbox === "string" ? db.emailMessage.findFirst({
-      where: { id: params.inbox, kind: "QUERY" },
-      select: { fromName: true, fromAddress: true, client: { select: { name: true } } },
-    }) : null,
-  ]);
-  const [owners, activity, history] = await Promise.all([
-    lead ? db.user.findMany({ where: { role: { in: ["OWNER", "STAFF"] }, disabledAt: null }, select: { id: true, name: true }, orderBy: { name: "asc" } }) : [],
-    lead ? db.auditLog.findMany({ where: { entityType: "MarketingLead", entityId: lead.id }, orderBy: { createdAt: "desc" }, take: 8 }) : [],
-    lead ? db.marketingSend.findMany({ where: { leadId: lead.id }, include: { campaign: { select: { id: true, name: true } } }, orderBy: { createdAt: "desc" }, take: 8 }) : [],
-  ]);
-
-  const filterHref = (patch: Record<string, string | null>) => {
-    const next = new URLSearchParams();
-    const merged = { q, tag, reach: reach === "any" ? "" : reach, stage: stage ?? "", ...patch };
-    for (const [key, value] of Object.entries(merged)) if (value) next.set(key, value);
-    const s = next.toString();
-    return s ? `/marketing?${s}` : "/marketing";
-  };
-  const pages = Math.ceil(matching / PAGE);
-  const num = (key: string) => (typeof params[key] === "string" && /^\d+$/.test(params[key]!) ? Number(params[key]) : null);
-  const imported = num("imported");
+  const d = await overviewData(db);
+  const tasks = await db.marketingTask.findMany({ where: { doneAt: null }, orderBy: { dueAt: "asc" }, take: 5 });
+  const taskLeads = new Map((await db.marketingLead.findMany({ where: { id: { in: tasks.map((t) => t.leadId) } }, select: { id: true, name: true, phone: true } })).map((l) => [l.id, l]));
+  const empty = d.contacts === 0;
+  const budget = d.settings.monthlyBudgetCents;
+  const live = d.live;
 
   return (
     <>
-      <PageHeader title="Marketing" subtitle="Your contacts, their permissions and what they've done with your campaigns." />
-      <MarketingTabs active="/marketing" />
-      {params.error ? <Notice tone="warn">{params.error}</Notice> : null}
-      {imported !== null ? (
-        <Notice tone="positive">
-          {imported} new contacts imported · {num("updated") ?? 0} existing contacts updated
-          {num("problems") ? ` · ${num("problems")} rows skipped (no usable phone number or email)` : ""}.
-        </Notice>
+      <LiveRefresh seconds={10} />
+      <PageHeader
+        eyebrow={<span className="inline-flex items-center gap-1.5"><WhatsappLogo size={14} weight="fill" className="text-[#25d366]" /> WhatsApp marketing</span>}
+        title="Mission control"
+        subtitle="Every campaign, reply and sign-up as it happens."
+        actions={<div className="flex flex-wrap gap-2"><WhatsAppTourButton /><ButtonLink href="/marketing/live" variant="secondary" size="sm"><Broadcast size={16} /> Live wall</ButtonLink><ButtonLink href="/marketing/campaigns" size="sm"><PaperPlaneTilt size={16} /> New campaign</ButtonLink></div>}
+      />
+      <MarketingTabs active="/marketing" badge={d.waiting} />
+      {params.demo === "loaded" ? <Notice tone="positive">Demo loaded: 180 sample contacts, 8 weeks of campaign history and demo mode switched on. Start a campaign and watch it play out here.</Notice> : null}
+
+      {empty ? (
+        <Card title="Get started" description="Import your contacts, or load the demo to see everything working first.">
+          <div className="flex flex-wrap gap-2">
+            {ctx.role === "OWNER" ? <form action={seedDemoAction}><Button type="submit"><Sparkle size={16} /> Load the demo</Button></form> : null}
+            <ButtonLink href="/marketing/contacts" variant="secondary">Import contacts</ButtonLink>
+          </div>
+        </Card>
       ) : null}
 
-      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <StatCard label="Contacts" value={total} href="/marketing" />
-        <StatCard label="Can email" value={canEmail} tone="brand" href={filterHref({ reach: "email", page: null })} />
-        <StatCard label="Can WhatsApp" value={canWhatsapp} tone="brand" href={filterHref({ reach: "whatsapp", page: null })} />
-        <StatCard label="Signed up" value={signedUp} tone="positive" href={filterHref({ reach: "signedup", page: null })} />
-        <StatCard label="Opted out" value={optedOut} tone="warn" href={filterHref({ reach: "optedout", page: null })} />
+      <div data-tour="kpis" className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <StatCard label="Sent today" value={d.sentToday} hint={`${d.sentWeek} this week`} />
+        <StatCard label="Read rate" value={`${d.readRate}%`} tone="brand" hint="last 7 days" />
+        <StatCard label="Replies waiting" value={d.waiting} tone={d.waiting ? "warn" : "neutral"} href="/marketing/inbox" />
+        <StatCard label="Sign-ups" value={d.signupsWeek} tone="positive" hint="last 7 days" />
+        <StatCard label="WhatsApp spend" value={randFromCents(d.spent)} hint={budget ? `of ${randFromCents(budget)} this month` : "this month"} />
       </div>
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-        <div className="min-w-0 space-y-5">
-          <Card title="Contacts" description={`${matching} match${matching === 1 ? "es" : ""}${q || tag || stage || reach !== "any" ? " these filters" : ""}.`}>
-            <form action="/marketing" className="mb-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto]">
-              <Input name="q" aria-label="Search contacts" placeholder="Search contacts" defaultValue={q} maxLength={200} />
-              <Select name="reach" aria-label="Permission" defaultValue={reach}><Options values={reaches} /></Select>
-              <Select name="stage" aria-label="Stage" defaultValue={stage ?? ""}><option value="">Any stage</option><Options values={stages} /></Select>
-              {tag ? <input type="hidden" name="tag" value={tag} /> : null}
-              <Button type="submit" variant="secondary">Filter</Button>
+      {d.alerts.length ? (
+        <div className="mb-5 space-y-2">
+          {d.alerts.map((a) => (
+            <form key={a.id} action={dismissAlert.bind(null, a.id)} className="flex items-start justify-between gap-3 rounded-xl border border-line bg-panel px-4 py-2.5 text-sm">
+              <span className="flex items-start gap-2"><Lightning size={16} weight="fill" className="mt-0.5 shrink-0 text-warn" />{a.message}</span>
+              <Button type="submit" variant="ghost" size="sm">Dismiss</Button>
             </form>
-            {topTags.length ? (
-              <div className="mb-4 flex flex-wrap gap-1.5" aria-label="Segments">
-                {topTags.map((t) => (
-                  <Link
-                    key={t.tag}
-                    href={filterHref({ tag: tag === t.tag ? null : t.tag, page: null })}
-                    aria-current={tag === t.tag ? "true" : undefined}
-                    className={`inline-flex min-h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors ${tag === t.tag ? "border-brand bg-brand text-white" : "border-line text-ink-2 hover:border-line-strong"}`}
-                  >
-                    {t.tag} <span className="num opacity-70">{Number(t.n)}</span>
-                  </Link>
-                ))}
-              </div>
-            ) : null}
-            {leads.length ? (
-              <ul className="divide-y divide-line">
-                {leads.map((item) => (
-                  <li key={item.id}>
-                    <Link href={filterHref({ page: page > 1 ? String(page) : null, lead: item.id })} className="flex min-h-12 items-center justify-between gap-3 py-2 -mx-2 rounded-lg px-2 hover:bg-subtle">
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-medium text-ink">{item.name}{item.company ? <span className="font-normal text-muted"> · {item.company}</span> : null}</span>
-                        <span className="block truncate text-xs text-muted">{[formatPhone(item.phone), item.email].filter(Boolean).join(" · ")}</span>
-                      </span>
-                      <span className="flex shrink-0 items-center gap-1.5">
-                        {item.signedUpAt ? <Badge tone="positive">Signed up</Badge> : null}
-                        {item.optedOutAt || item.whatsappOptedOutAt ? <Badge tone="warn">Opted out</Badge> : null}
-                        {!item.signedUpAt ? <Badge>{stages[item.stage]}</Badge> : null}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : <p className="text-sm text-muted">No contacts match. Import your contacts or clear the filters.</p>}
-            {pages > 1 ? (
-              <div className="mt-4 flex items-center justify-between gap-3 text-sm">
-                {page > 1 ? <Link className="inline-flex min-h-11 items-center text-brand hover:underline" href={filterHref({ page: String(page - 1) })}>Previous</Link> : <span />}
-                <span className="text-muted">Page {page} of {pages}</span>
-                {page < pages ? <Link className="inline-flex min-h-11 items-center text-brand hover:underline" href={filterHref({ page: String(page + 1) })}>Next</Link> : <span />}
-              </div>
-            ) : null}
-          </Card>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        <div className="min-w-0 space-y-5">
+          <div data-tour="mission-control">
+            <Card
+              title={live ? live.campaign.name : "No campaign running"}
+              description={live ? `${statuses[live.campaign.status]}${live.campaign.startedAt ? ` · started ${live.campaign.startedAt.toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", dateStyle: "medium", timeStyle: "short" })}` : ""}` : "Start a campaign and it appears here, live."}
+              actions={live ? <div className="flex gap-2"><Badge tone={live.campaign.status === "SENDING" ? "brand" : live.campaign.status === "PAUSED" ? "warn" : "positive"} dot>{statuses[live.campaign.status]}</Badge><Link href={`/marketing/campaigns?campaign=${live.campaign.id}`} className="text-sm text-brand hover:underline">Open</Link></div> : null}
+            >
+              {live ? (
+                <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+                  <Funnel stats={live.stats} big />
+                  <div className="space-y-3">
+                    <div className="rounded-xl bg-subtle p-4">
+                      <p className="text-xs text-muted">Spent so far</p>
+                      <p className="num text-2xl font-semibold">{randFromCents(live.costCents)}</p>
+                      <p className="mt-1 text-xs text-muted">{live.perSignup != null ? `${randFromCents(live.perSignup)} per sign-up` : "No sign-ups yet"}</p>
+                    </div>
+                    {live.forecast ? (
+                      <div className="rounded-xl bg-subtle p-4">
+                        <p className="flex items-center gap-1.5 text-xs text-muted"><TrendUp size={14} /> Forecast ({live.forecast.confidence} estimate)</p>
+                        <p className="num text-2xl font-semibold">{live.forecast.signedUp} sign-ups</p>
+                        <p className="mt-1 text-xs text-muted">and about {live.forecast.clicked} clicks when replies settle</p>
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="lg:col-span-2">
+                    <p className="mb-2 flex items-center gap-1.5 text-sm font-medium"><ChatCircleDots size={16} /> Latest replies</p>
+                    {live.replies.length ? (
+                      <ul className="divide-y divide-line">
+                        {live.replies.map((r) => (
+                          <li key={r.id} className="flex items-start justify-between gap-3 py-2 text-sm">
+                            <span className="min-w-0"><b className="font-medium">{r.fromName ?? formatPhone(r.fromPhone)}</b> <span className="text-ink-2">{r.body}</span></span>
+                            {r.tag && r.tag !== "OTHER" ? <Badge tone={r.tag === "STOP" || r.tag === "COMPLAINT" ? "warn" : r.tag === "INTERESTED" ? "positive" : "brand"}>{r.tag.toLowerCase()}</Badge> : null}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : <p className="text-sm text-muted">Replies appear here as they arrive.</p>}
+                  </div>
+                </div>
+              ) : <ButtonLink href="/marketing/campaigns">Create a campaign <ArrowRight size={14} /></ButtonLink>}
+            </Card>
+          </div>
+
+          <div data-tour="best-times">
+            <Card title="When your clients respond" description="Best send times from your campaigns so far (South African time).">
+              {d.best.length ? (
+                <ol className="grid gap-3 sm:grid-cols-3">
+                  {d.best.map((c, i) => (
+                    <li key={`${c.dow}-${c.hour}`} className="rounded-xl border border-line p-3">
+                      <p className="text-xs text-muted">#{i + 1}</p>
+                      <p className="text-lg font-semibold">{DAY_NAMES[c.dow]} {hourLabel(c.hour)}</p>
+                      <p className="text-xs text-muted">{c.sent ? Math.round((c.read / c.sent) * 100) : 0}% read · {c.clicked} clicks · {c.signedUp} sign-ups</p>
+                    </li>
+                  ))}
+                </ol>
+              ) : <p className="text-sm text-muted">After your first campaigns, the Hub shows the days and hours that bring the most results here.</p>}
+              <Link href="/marketing/analytics" className="mt-3 inline-flex min-h-11 items-center text-sm text-brand hover:underline">See the full heatmap and analytics</Link>
+            </Card>
+          </div>
         </div>
 
         <div className="min-w-0 space-y-5">
-          {lead ? (
-            <Card title={lead.name} description={`${sources[lead.source]} · added ${date(lead.createdAt)}`}>
-              <form key={lead.id} action={updateLead.bind(null, lead.id)} className="space-y-3">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Name"><Input name="name" defaultValue={lead.name} required maxLength={200} /></Field>
-                  <Field label="Company"><Input name="company" defaultValue={lead.company} maxLength={200} /></Field>
-                  <Field label="Mobile"><Input name="phone" type="tel" defaultValue={formatPhone(lead.phone)} maxLength={40} /></Field>
-                  <Field label="Email"><Input name="email" type="email" defaultValue={lead.email ?? ""} maxLength={200} /></Field>
-                  <Field label="Stage"><Select name="stage" defaultValue={lead.stage}><Options values={stages} /></Select></Field>
-                  <Field label="Owner"><Select name="ownerId" defaultValue={owners.some((owner) => owner.id === lead.ownerId) ? lead.ownerId : ""} required>
-                    <option value="" disabled>Choose staff member</option>
-                    {owners.map((owner) => <option key={owner.id} value={owner.id}>{owner.name}</option>)}
-                  </Select></Field>
-                </div>
-                <Field label="Segments" hint="Comma-separated, e.g. past client, payroll, joburg."><Input name="tags" defaultValue={lead.tags.join(", ")} maxLength={800} /></Field>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Email marketing" hint={lead.optedOutAt ? `Opted out ${date(lead.optedOutAt)}.` : lead.consentAt ? `Allowed since ${date(lead.consentAt)}.` : "No permission recorded."}>
-                    <Select name="preference"><option value="unchanged">Keep as is</option><option value="opt-in">Record permission</option><option value="opt-out">Record opt-out</option></Select>
-                  </Field>
-                  <Field label="WhatsApp marketing" hint={lead.whatsappOptedOutAt ? `Opted out ${date(lead.whatsappOptedOutAt)}.` : lead.whatsappConsentAt ? `Allowed since ${date(lead.whatsappConsentAt)}.` : "No permission recorded."}>
-                    <Select name="whatsappPreference"><option value="unchanged">Keep as is</option><option value="opt-in">Record permission</option><option value="opt-out">Record opt-out</option></Select>
-                  </Field>
-                </div>
-                <Field label="Permission evidence" hint={lead.consentEvidence ? `On file: ${lead.consentEvidence}` : "When and how permission was given."}><Input name="evidence" maxLength={1000} /></Field>
-                <Field label="Follow-up"><Textarea name="followUp" defaultValue={lead.followUp ?? ""} maxLength={1000} rows={2} /></Field>
-                <Field label="Follow-up date"><Input name="followUpDate" type="date" defaultValue={date(lead.followUpDate)} /></Field>
-                <input type="hidden" name="interest" value={lead.interest} />
-                <Button type="submit">Save contact</Button>
-              </form>
-              {!lead.signedUpAt ? (
-                <form action={markSignedUp.bind(null, lead.id)} className="mt-3">
-                  <Button type="submit" variant="secondary">Mark as signed up</Button>
-                </form>
-              ) : <p className="mt-3 text-sm text-positive">Signed up on {date(lead.signedUpAt)}.</p>}
-              {history.length ? (
-                <div className="mt-5 border-t border-line pt-3">
-                  <h3 className="text-sm font-medium">Campaigns</h3>
-                  <ul className="mt-2 space-y-1 text-sm">
-                    {history.map((send) => (
-                      <li key={send.id} className="flex justify-between gap-3">
-                        <Link className="min-w-0 truncate text-brand hover:underline" href={`/marketing/campaigns?campaign=${send.campaign.id}`}>{send.campaign.name}</Link>
-                        <span className="shrink-0 text-muted">{send.signedUpAt ? "Signed up" : send.clickedAt ? "Clicked" : send.repliedAt ? "Replied" : send.status.toLowerCase()}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              {activity.length ? (
-                <div className="mt-5 border-t border-line pt-3">
-                  <h3 className="text-sm font-medium">Activity</h3>
-                  <ul className="mt-2 space-y-1 text-sm text-muted">
-                    {activity.map((entry) => <li key={entry.id}>{entry.action.replace("lead.", "").replace("_", " ")} · {date(entry.createdAt)}{entry.actorLabel ? ` · ${entry.actorLabel}` : ""}</li>)}
-                  </ul>
-                </div>
-              ) : null}
+          <div data-tour="hot-leads">
+            <Card title="Who to phone today" description="Warmest contacts who haven't signed up yet.">
+              {d.hot.length ? (
+                <ul className="divide-y divide-line">
+                  {d.hot.map((l) => (
+                    <li key={l.id} className="flex items-center justify-between gap-3 py-2">
+                      <Link href={`/marketing/contacts?lead=${l.id}`} className="min-w-0">
+                        <span className="block truncate text-sm font-medium">{l.name}</span>
+                        <span className="block truncate text-xs text-muted">{l.company}{l.bestHour != null ? ` · reads around ${hourLabel(l.bestHour)}` : ""}</span>
+                      </Link>
+                      <span className="flex shrink-0 items-center gap-2">
+                        <Badge tone={l.band === "Hot" ? "danger" : "warn"}>{l.band} {l.score}</Badge>
+                        {l.phone ? <a href={`tel:+${l.phone}`} className="grid h-11 w-11 place-items-center rounded-full border border-line hover:bg-subtle" aria-label={`Call ${l.name}`}><Phone size={16} /></a> : null}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className="text-sm text-muted">Contacts who read, click or reply show up here.</p>}
             </Card>
-          ) : null}
+          </div>
 
-          <Card title="Import contacts" description="A spreadsheet (.csv), a Google or Outlook contacts export, or your phone's contacts export (.vcf). Up to 5,000 at a time.">
-            <form action={importContacts} className="space-y-3">
-              <Field label="File" hint="Columns are matched by name: name or first and last name, mobile or phone, email, company, tags.">
-                <Input name="file" type="file" accept=".csv,.vcf,text/csv,text/vcard,text/x-vcard" required />
-              </Field>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Segments for everyone in the file" hint="e.g. past client, 2026 campaign"><Input name="tags" maxLength={400} /></Field>
-                <Field label="Service interest"><Select name="interest"><Options values={interests} /></Select></Field>
-              </div>
-              <Field label="Marketing permission" hint="Existing clients may be sent offers for similar services, with an opt-out in every message (POPIA section 69(3)). Anyone else needs to opt in first.">
-                <Select name="basis" defaultValue="none">
-                  <option value="none">Not yet: I'll record permission per contact</option>
-                  <option value="existing-clients">These are all existing or past clients of the practice</option>
-                </Select>
-              </Field>
-              <Button type="submit" variant="secondary">Import contacts</Button>
-            </form>
+          <Card title="Call-backs" description={tasks.length ? "People who asked you to call them." : "No call-backs waiting."}>
+            {tasks.length ? (
+              <ul className="divide-y divide-line">
+                {tasks.map((t) => {
+                  const lead = taskLeads.get(t.leadId);
+                  return (
+                    <li key={t.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                      <span className="min-w-0"><b className="font-medium">{lead?.name ?? "Contact"}</b>{t.note ? <span className="block truncate text-xs text-muted">“{t.note}”</span> : null}</span>
+                      <span className="flex shrink-0 gap-2">
+                        {lead?.phone ? <a href={`tel:+${lead.phone}`} className="grid h-11 w-11 place-items-center rounded-full border border-line hover:bg-subtle" aria-label={`Call ${lead.name}`}><Phone size={16} /></a> : null}
+                        <form action={completeTask.bind(null, t.id)}><Button type="submit" variant="secondary" size="sm">Done</Button></form>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
           </Card>
 
-          <Card title="Add a contact" description="Re-entering a known email or number updates that contact.">
-            <form key={enquiry?.fromAddress ?? "new"} action={captureLead} className="grid gap-3 sm:grid-cols-2">
-              <Field label="Name"><Input name="name" required maxLength={200} defaultValue={enquiry?.fromName ?? undefined} /></Field>
-              <Field label="Company"><Input name="company" maxLength={200} defaultValue={enquiry?.client?.name} /></Field>
-              <Field label="Mobile"><Input name="phone" type="tel" maxLength={40} placeholder="082 123 4567" /></Field>
-              <Field label="Email"><Input name="email" type="email" maxLength={200} defaultValue={enquiry?.fromAddress} /></Field>
-              <Field label="Service interest"><Select name="interest"><Options values={interests} /></Select></Field>
-              <Field label="Source"><Select name="source" defaultValue={enquiry ? "INBOX" : "MANUAL"}><Options values={sources} /></Select></Field>
-              <Field label="Segments" className="sm:col-span-2"><Input name="tags" maxLength={400} placeholder="past client, payroll" /></Field>
-              <div><Button type="submit">Add contact</Button></div>
-            </form>
+          <Card title="WhatsApp number" description={d.whatsapp ? `${d.whatsapp.displayNumber ?? d.whatsapp.phoneNumberId}` : d.settings.demoMode ? "Demo mode: no number needed yet." : "Not connected yet."}>
+            <dl className="grid grid-cols-2 gap-3 text-sm">
+              <div><dt className="text-xs text-muted">Quality</dt><dd className="font-medium">{d.whatsapp?.qualityRating?.toLowerCase() ?? "not checked yet"}</dd></div>
+              <div><dt className="text-xs text-muted">Daily limit</dt><dd className="font-medium">{d.whatsapp?.messagingTier?.replace("TIER_", "") ?? d.settings.dailyLimit} people</dd></div>
+              <div><dt className="text-xs text-muted">Reachable on WhatsApp</dt><dd className="font-medium">{d.reachable.toLocaleString("en-US")} of {d.contacts.toLocaleString("en-US")}</dd></div>
+              <div><dt className="text-xs text-muted">Call-backs open</dt><dd className="font-medium">{d.tasks}</dd></div>
+            </dl>
+            <Link href="/marketing/settings" className="mt-2 inline-flex min-h-11 items-center text-sm text-brand hover:underline">Settings and limits</Link>
           </Card>
         </div>
       </div>

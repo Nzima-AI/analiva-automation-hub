@@ -20,6 +20,17 @@ export interface WaTemplate {
   /** How many {{n}} placeholders the body has. */
   bodyParams: number;
   bodyText: string;
+  header?: string | null;
+  quickReplies?: string[];
+  urlButton?: boolean;
+  carousel?: boolean;
+}
+
+/** Meta's daily limit on new conversations for a messaging tier. */
+export function tierLimit(tier: string | null | undefined, fallback: number): number {
+  const m = /TIER_(\d+)(K)?/i.exec(tier ?? "");
+  if (/UNLIMITED/i.test(tier ?? "")) return 1_000_000;
+  return m ? Number(m[1]) * (m[2] ? 1000 : 1) : fallback;
 }
 
 function token(setting: Pick<WhatsAppSetting, "accessTokenEncrypted">) {
@@ -36,23 +47,49 @@ async function graph(setting: Pick<WhatsAppSetting, "accessTokenEncrypted">, pat
   return { res, body };
 }
 
+export interface TemplateSend {
+  to: string;
+  template: string;
+  language: string;
+  params: string[];
+  /** Header media: IMAGE, VIDEO or DOCUMENT, with a public link. */
+  headerType?: string | null;
+  headerMediaUrl?: string | null;
+  /** Dynamic URL button suffix (the personal tracking token). */
+  urlSuffix?: string | null;
+  /** Carousel card header images, in card order. */
+  carouselMedia?: string[];
+}
+
+/** The template's components: header media, body parameters, a dynamic URL button, carousel cards. */
+export function templateComponents(o: TemplateSend) {
+  const components: Array<Record<string, unknown>> = [];
+  const media = o.headerType && o.headerMediaUrl ? o.headerType.toLowerCase() : null;
+  if (media && ["image", "video", "document"].includes(media)) {
+    components.push({ type: "header", parameters: [{ type: media, [media]: { link: o.headerMediaUrl } }] });
+  }
+  if (o.params.length) components.push({ type: "body", parameters: o.params.map((text) => ({ type: "text", text: text.slice(0, 1000) })) });
+  if (o.urlSuffix) components.push({ type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: o.urlSuffix }] });
+  if (o.carouselMedia?.length) {
+    components.push({
+      type: "carousel",
+      cards: o.carouselMedia.map((link, card_index) => ({ card_index, components: [{ type: "header", parameters: [{ type: "image", image: { link } }] }] })),
+    });
+  }
+  return components;
+}
+
 /** Sends an approved template (the only kind of message Meta allows outside a 24-hour reply window). */
-export async function sendTemplate(
-  setting: Pick<WhatsAppSetting, "accessTokenEncrypted" | "phoneNumberId">,
-  o: { to: string; template: string; language: string; params: string[] },
-): Promise<WaResult> {
+export async function sendTemplate(setting: Pick<WhatsAppSetting, "accessTokenEncrypted" | "phoneNumberId">, o: TemplateSend): Promise<WaResult> {
   try {
+    const components = templateComponents(o);
     const { res, body } = await graph(setting, `${setting.phoneNumberId}/messages`, {
       method: "POST",
       body: JSON.stringify({
         messaging_product: "whatsapp",
         to: o.to,
         type: "template",
-        template: {
-          name: o.template,
-          language: { code: o.language },
-          ...(o.params.length ? { components: [{ type: "body", parameters: o.params.map((text) => ({ type: "text", text: text.slice(0, 1000) })) }] } : {}),
-        },
+        template: { name: o.template, language: { code: o.language }, ...(components.length ? { components } : {}) },
       }),
     });
     const id = (body.messages as Array<{ id?: string }> | undefined)?.[0]?.id;
@@ -88,7 +125,14 @@ export async function listTemplates(setting: Pick<WhatsAppSetting, "accessTokenE
       error: null,
       templates: data.map((t) => {
         const text = t.components?.find((c) => c.type === "BODY")?.text ?? "";
-        return { name: t.name, language: t.language, status: t.status, category: t.category, bodyText: text, bodyParams: new Set(text.match(/\{\{\d+\}\}/g) ?? []).size };
+        const buttons = (t.components?.find((c) => c.type === "BUTTONS") as { buttons?: Array<{ type: string; text: string }> } | undefined)?.buttons ?? [];
+        return {
+          name: t.name, language: t.language, status: t.status, category: t.category, bodyText: text, bodyParams: new Set(text.match(/\{\{\d+\}\}/g) ?? []).size,
+          header: (t.components?.find((c) => c.type === "HEADER") as { format?: string } | undefined)?.format ?? null,
+          quickReplies: buttons.filter((b) => b.type === "QUICK_REPLY").map((b) => b.text),
+          urlButton: buttons.some((b) => b.type === "URL"),
+          carousel: Boolean(t.components?.some((c) => c.type === "CAROUSEL")),
+        };
       }),
     };
   } catch (e) {
@@ -99,9 +143,9 @@ export async function listTemplates(setting: Pick<WhatsAppSetting, "accessTokenE
 /** Checks the connection details by reading the phone number they point at. */
 export async function checkConnection(setting: Pick<WhatsAppSetting, "accessTokenEncrypted" | "phoneNumberId">) {
   try {
-    const { res, body } = await graph(setting, `${setting.phoneNumberId}?fields=display_phone_number,verified_name,quality_rating`);
+    const { res, body } = await graph(setting, `${setting.phoneNumberId}?fields=display_phone_number,verified_name,quality_rating,messaging_limit_tier`);
     if (!res.ok) return { ok: false as const, error: body.error?.message ?? `Meta returned ${res.status}` };
-    return { ok: true as const, displayNumber: String(body.display_phone_number ?? ""), name: String(body.verified_name ?? ""), quality: String(body.quality_rating ?? "") };
+    return { ok: true as const, displayNumber: String(body.display_phone_number ?? ""), name: String(body.verified_name ?? ""), quality: String(body.quality_rating ?? ""), tier: String(body.messaging_limit_tier ?? "") };
   } catch (e) {
     return { ok: false as const, error: e instanceof Error ? e.message : String(e) };
   }

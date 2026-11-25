@@ -88,6 +88,7 @@ export interface ImportedContact {
   company: string;
   tags: string[];
   interest: string | null;
+  region?: string | null;
 }
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -119,6 +120,7 @@ export function contactsFromCsv(rows: string[][]): { contacts: ImportedContact[]
     company: pick(header, /^(company|business|organi[sz]ation)( name)?$/i, /^organi[sz]ation 1 - name$/i),
     tags: pick(header, /^(tags?|labels?|groups?|segments?)$/i, /^group membership$/i),
     interest: pick(header, /^interest$/i, /^service$/i),
+    region: pick(header, /^(region|province|area|city|town)$/i, /^address 1 - region$/i),
   };
   const problems: string[] = [];
   if (col.name === -1 && col.first === -1) problems.push("No name column (name, or first name and last name).");
@@ -144,6 +146,7 @@ export function contactsFromCsv(rows: string[][]): { contacts: ImportedContact[]
       company: at(col.company).slice(0, 200),
       tags: parseTags(at(col.tags).replace(/\* ?myContacts/gi, "")),
       interest: at(col.interest).toUpperCase() || null,
+      region: at(col.region).slice(0, 80) || null,
     });
   });
   return { contacts, problems };

@@ -83,6 +83,14 @@ export const MODEL_OWNERSHIP: Record<string, Ownership> = {
   MarketingSend: "practice",
   WhatsAppSetting: "practice",
   WhatsAppMessage: "practice",
+  MarketingSettings: "practice",
+  MarketingAlert: "practice",
+  MarketingTask: "practice",
+  MarketingSavedReply: "practice",
+  MarketingSequence: "practice",
+  SequenceEnrollment: "practice",
+  ReminderRule: "practice",
+  ReferralEvent: "practice",
 };
 
 const READ_OPS = new Set([

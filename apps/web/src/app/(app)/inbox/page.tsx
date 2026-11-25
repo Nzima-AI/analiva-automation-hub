@@ -54,7 +54,7 @@ export default async function InboxPage() {
                 </Td>
                 <Td className="text-sm">
                   {e.kind === "QUERY" ? (
-                    <Link href={`/marketing?inbox=${e.id}`} className="mr-2 text-brand hover:underline">Capture lead</Link>
+                    <Link href={`/marketing/contacts?inbox=${e.id}`} className="mr-2 text-brand hover:underline">Capture lead</Link>
                   ) : null}
                   {e.captures.length === 0 ? (
                     <span className="text-muted">Stored</span>

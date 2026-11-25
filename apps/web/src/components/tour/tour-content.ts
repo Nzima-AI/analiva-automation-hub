@@ -12,10 +12,10 @@ export const staffTour = [
     action: "See the review queue", href: "/review",
   },
   {
-    icon: "crm", area: "Marketing", title: "Keep the next conversation moving.",
-    description: "Capture an enquiry as a lead, assign an owner and set a follow-up date. Draft campaigns for opted-in audiences and let a workspace owner approve them. Live campaign delivery is pending setup.",
-    proof: ["Enquiry captured", "Owner and follow-up assigned", "Campaign draft ready for approval"],
-    action: "Explore leads and campaigns", href: "/marketing",
+    icon: "crm", area: "WhatsApp marketing", title: "Reach every client on WhatsApp.",
+    description: "Send personalised WhatsApp campaigns through Meta directly, with no monthly fee. See each message on a phone before it goes, send at each client's best time, and watch reads, clicks and sign-ups arrive live. Replies, call-backs and opt-outs are handled for you.",
+    proof: ["Live mission control", "Best-time sending and A/B tests", "Replies sorted in one inbox"],
+    action: "Open WhatsApp marketing", href: "/marketing",
   },
   {
     icon: "report", area: "Books & reports", title: "Follow the numbers back to the work.",

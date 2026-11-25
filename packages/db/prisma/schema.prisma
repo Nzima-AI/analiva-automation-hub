@@ -254,6 +254,14 @@ model Practice {
   marketingLeads MarketingLead[]
   marketingCampaigns MarketingCampaign[]
   marketingSends     MarketingSend[]
+  marketingSettings  MarketingSettings?
+  marketingAlerts    MarketingAlert[]
+  marketingTasks     MarketingTask[]
+  savedReplies       MarketingSavedReply[]
+  sequences          MarketingSequence[]
+  sequenceEnrollments SequenceEnrollment[]
+  reminderRules      ReminderRule[]
+  referralEvents     ReferralEvent[]
   whatsAppMessages   WhatsAppMessage[]
   whatsAppSetting    WhatsAppSetting?
 }
@@ -1016,8 +1024,17 @@ model MarketingLead {
   lastClickedAt      DateTime?
   lastRepliedAt      DateTime?
   signedUpAt         DateTime?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  /// Region or province, from the import (for the area breakdown).
+  region             String?
+  /// The Hub client this contact belongs to (synced from the CRM), for compliance reminders.
+  clientId           String?
+  /// "Not now" from a reply button: no follow-ups until this date.
+  snoozedUntil       DateTime?
+  /// Hour of day (0-23, SA time) this person usually reads WhatsApp; learned from past reads.
+  bestHour           Int?
+  referredById       String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 
   practice Practice @relation(fields: [practiceId], references: [id])
   sends    MarketingSend[]
@@ -1049,7 +1066,25 @@ model MarketingCampaign {
   /// A follow-up goes to the recipients of parentId that match followUpRule.
   parentId         String?
   followUpRule     FollowUpRule?
-  status           CampaignStatus  @default(DRAFT)
+  status            CampaignStatus    @default(DRAFT)
+  /// Send each person at the hour they usually read WhatsApp (falls back to the practice's best hour).
+  bestTime          Boolean           @default(false)
+  /// A/B test: a second template; testPercent of the audience splits A/B, the winner goes to the rest after testHours.
+  variantTemplate   String?
+  variantLanguage   String?
+  testPercent       Int?
+  testHours         Int?
+  winner            String?
+  /// Template header media (image, video or document link) and carousel card images.
+  headerType        String?
+  headerMediaUrl    String?
+  carouselMedia     String[]          @default([])
+  /// Quick-reply button text -> action: SEND_LINK, CALLBACK, NOT_NOW, STOP
+  buttonActions     Json?
+  /// Template has a dynamic URL button: its suffix is the personal tracking token.
+  urlButton         Boolean           @default(false)
+  /// Meta category: MARKETING or UTILITY (priced differently).
+  category          String            @default("MARKETING")
   scheduledAt      DateTime?
   startedAt        DateTime?
   finishedAt       DateTime?
@@ -1078,6 +1113,7 @@ enum CampaignStatus {
   SENDING
   SENT
   CANCELLED
+  PAUSED
 }
 
 enum FollowUpRule {
@@ -1114,6 +1150,15 @@ model MarketingSend {
   clickedAt   DateTime?
   repliedAt   DateTime?
   signedUpAt  DateTime?
+  /// A or B in an A/B test.
+  variant     String?
+  /// Per-person send time (best time, quiet hours, daily limit); null = as soon as possible.
+  sendAfter   DateTime?
+  /// Which quick-reply button they pressed.
+  buttonReply String?
+  /// Demo mode: simulated receipts are generated instead of calling Meta.
+  simulated   Boolean         @default(false)
+  costCents   Int             @default(0)
   createdAt   DateTime        @default(now())
 
   practice Practice          @relation(fields: [practiceId], references: [id])
@@ -1136,7 +1181,10 @@ model WhatsAppSetting {
   appSecretEncrypted   String
   verifyToken          String   @default(cuid())
   /// Messages sent per cron run; Meta allows far more, this keeps runs short.
-  batchSize            Int      @default(60)
+  batchSize             Int      @default(60)
+  qualityRating         String?
+  messagingTier         String?
+  checkedAt             DateTime?
   updatedAt            DateTime @updatedAt
 
   practice Practice @relation(fields: [practiceId], references: [id])
@@ -1151,11 +1199,146 @@ model WhatsAppMessage {
   fromName   String?
   body       String
   providerId String    @unique
-  optOut     Boolean   @default(false)
+  optOut     Boolean  @default(false)
+  /// IN from the contact, OUT a reply from the practice.
+  direction  String   @default("IN")
+  /// Rule-based tag: INTERESTED, PRICE, CALLBACK, COMPLAINT, STOP, OTHER
+  tag        String?
+  assignedTo String?
+  sentById   String?
   handledAt  DateTime?
   receivedAt DateTime  @default(now())
 
   practice Practice @relation(fields: [practiceId], references: [id])
 
   @@index([practiceId, receivedAt])
+}
+
+/// Practice-wide marketing settings: costs, budget, quiet hours, safety limits, demo mode.
+model MarketingSettings {
+  id                 String    @id @default(cuid())
+  practiceId         String    @unique
+  /// Meta's price per delivered message, in rand cents (check Meta's rate card).
+  marketingCostCents Int       @default(70)
+  utilityCostCents   Int       @default(18)
+  monthlyBudgetCents Int?
+  quietStart         Int       @default(19)
+  quietEnd           Int       @default(7)
+  skipSundays        Boolean   @default(true)
+  skipHolidays       Boolean   @default(true)
+  /// Pause a campaign when opt-outs exceed this % (after 50 sends).
+  autoPausePct       Int       @default(3)
+  /// New conversations per 24 hours when Meta's tier isn't known yet.
+  dailyLimit         Int       @default(250)
+  demoMode           Boolean   @default(false)
+  autoReplyText      String?
+  weeklyReport       Boolean   @default(true)
+  lastWeeklyReportAt DateTime?
+  updatedAt          DateTime  @updatedAt
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+}
+
+model MarketingAlert {
+  id         String    @id @default(cuid())
+  practiceId String
+  kind       String
+  message    String
+  campaignId String?
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+
+  @@index([practiceId, createdAt])
+}
+
+/// "Call me back" requests and hot-lead calls.
+model MarketingTask {
+  id         String    @id @default(cuid())
+  practiceId String
+  leadId     String
+  kind       String    @default("CALLBACK")
+  note       String?
+  dueAt      DateTime  @default(now())
+  assignedTo String?
+  doneAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+
+  @@index([practiceId, doneAt, dueAt])
+}
+
+model MarketingSavedReply {
+  id         String   @id @default(cuid())
+  practiceId String
+  title      String
+  body       String
+  createdAt  DateTime @default(now())
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+}
+
+/// An automatic sequence: steps sent after a trigger, each after a delay and an optional condition.
+model MarketingSequence {
+  id         String   @id @default(cuid())
+  practiceId String
+  name       String
+  /// NEW_CONTACT, CAMPAIGN_SENT, SIGNED_UP
+  trigger    String
+  triggerRef String?
+  /// [{ delayHours, template, language, params, condition: "ALL" | "NOT_CLICKED" | "NOT_SIGNED_UP" }]
+  steps      Json
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  practice    Practice             @relation(fields: [practiceId], references: [id])
+  enrollments SequenceEnrollment[]
+}
+
+model SequenceEnrollment {
+  id         String    @id @default(cuid())
+  practiceId String
+  sequenceId String
+  leadId     String
+  step       Int       @default(0)
+  nextAt     DateTime
+  doneAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  practice Practice          @relation(fields: [practiceId], references: [id])
+  sequence MarketingSequence @relation(fields: [sequenceId], references: [id])
+
+  @@unique([sequenceId, leadId])
+  @@index([doneAt, nextAt])
+}
+
+/// Compliance and payment reminders on WhatsApp (utility templates, cheaper than marketing).
+model ReminderRule {
+  id         String    @id @default(cuid())
+  practiceId String
+  /// FILING_DUE (compliance filings) or INVOICE_OVERDUE
+  kind       String
+  daysBefore Int       @default(5)
+  template   String
+  language   String    @default("en")
+  params     String[]  @default([])
+  active     Boolean   @default(true)
+  lastRunAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+}
+
+model ReferralEvent {
+  id         String   @id @default(cuid())
+  practiceId String
+  referrerId String
+  kind       String
+  createdAt  DateTime @default(now())
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+
+  @@index([practiceId, referrerId])
 }

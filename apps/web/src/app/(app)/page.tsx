@@ -5,6 +5,7 @@ import { BarList } from "@/components/bar-list";
 import { BarTrend, MiniBars } from "@/components/charts";
 import { compactRand } from "@/lib/compact-rand";
 import { ButtonLink, Card, Empty, Figure, InkPanel } from "@/components/ui";
+import { WhatsAppHero } from "@/components/marketing/whatsapp-hero";
 import { clientDeadlines } from "@/lib/compliance";
 import { formatCalendarDate, formatDateTime } from "@/lib/format";
 import { requireStaff } from "@/lib/session";
@@ -119,8 +120,9 @@ export default async function DashboardPage() {
           <MiniBars data={chart.map((c) => c.auto + c.staff + c.waiting)} height={44} />
         </div>
       </InkPanel>
+      <WhatsAppHero db={db} />
 
-      <div className="grid gap-6 lg:grid-cols-12">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <Card title="Capture activity" description="Last 30 days, by outcome" icon={Sparkle} className="lg:col-span-8">
           {captures30.length === 0 ? (
             <Empty icon={Tray}>Nothing captured in the last 30 days. Connect an inbox under Settings, Email accounts.</Empty>

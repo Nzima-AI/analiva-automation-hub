@@ -20,3 +20,4 @@ export * from "./outbound";
 
 export * from "./capture/document-classification";
 export * from "./marketing";
+export * from "./marketing-analytics";

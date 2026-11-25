@@ -7,7 +7,7 @@ import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import {
   ArrowUpRight, BookOpen, Briefcase, CalendarDots, ChatsCircle, FileText, FolderOpen, GearSix, Layout,
-  Lifebuoy, List, ListChecks, MagnifyingGlass, Pulse, Receipt, SignOut, Sparkle, SquaresFour, Tray, UsersThree, X,
+  Lifebuoy, List, ListChecks, MagnifyingGlass, Pulse, Receipt, SignOut, Sparkle, SquaresFour, Tray, UsersThree, WhatsappLogo, X,
   type Icon,
 } from "@phosphor-icons/react";
 import { CURRENT_TIER } from "@/lib/plan";
@@ -17,7 +17,7 @@ const ICONS = {
   dashboard: SquaresFour, review: ListChecks, inbox: Tray, deadlines: CalendarDots,
   clients: Briefcase, lookup: MagnifyingGlass, invoices: Receipt, documents: FolderOpen,
   books: BookOpen, reports: FileText, activity: Pulse, team: UsersThree, settings: GearSix,
-  enquiries: ChatsCircle, help: Lifebuoy,
+  enquiries: ChatsCircle, help: Lifebuoy, whatsapp: WhatsappLogo,
 } satisfies Record<string, Icon>;
 
 export type NavIcon = keyof typeof ICONS;

@@ -12,9 +12,9 @@ import { queueCampaign, sendTest } from "@/lib/marketing/engine";
 import { requireStaff } from "@/lib/session";
 import { checkConnection, sendText } from "@/lib/whatsapp";
 
-const path = "/marketing";
+const path = "/marketing/contacts";
 const campaignsPath = "/marketing/campaigns";
-const whatsappPath = "/marketing/whatsapp";
+const whatsappPath = "/marketing/settings";
 const interest = z.enum(["REPORTING", "BOOKKEEPING", "PAYROLL"]);
 const MAX_IMPORT = 5000;
 
@@ -120,6 +120,7 @@ export async function importContacts(form: FormData) {
       email: contact.email,
       interest: contactInterest,
       tags,
+      region: contact.region ?? null,
       ...(evidence ? { consentEvidence: evidence, consentAt: contact.email ? now : null, whatsappConsentAt: contact.phone ? now : null } : {}),
     });
   }
@@ -219,6 +220,15 @@ const campaignSchema = z
     tags: contactFields.tags,
     ctaUrl: z.preprocess(blankToNull, z.url({ protocol: /^https$/ }).max(500).nullish()),
     template: z.preprocess(blankToNull, z.string().max(200).nullish()),
+    urlButton: z.preprocess((v) => v === "on" || v === "true", z.boolean()).optional(),
+    category: z.enum(["MARKETING", "UTILITY"]).default("MARKETING"),
+    bestTime: z.preprocess((v) => v === "on", z.boolean()),
+    variantTemplate: z.preprocess(blankToNull, z.string().max(200).nullish()),
+    testPercent: z.preprocess(blankToNull, z.coerce.number().int().min(4).max(50).nullish()),
+    testHours: z.preprocess(blankToNull, z.coerce.number().int().min(1).max(72).nullish()),
+    headerType: z.preprocess(blankToNull, z.enum(["IMAGE", "VIDEO", "DOCUMENT"]).nullish()),
+    headerMediaUrl: z.preprocess(blankToNull, z.url({ protocol: /^https$/ }).max(500).nullish()),
+    carouselMedia: z.preprocess((v) => (typeof v === "string" ? v.split(/[\s,]+/).filter(Boolean) : []), z.array(z.url({ protocol: /^https$/ }).max(500)).max(10)),
     templateParams: z.preprocess(
       (v) => (typeof v === "string" ? v.split(",").map((s) => s.trim()).filter(Boolean) : []),
       z.array(z.enum(Object.keys(TEMPLATE_FIELDS) as [keyof typeof TEMPLATE_FIELDS, ...Array<keyof typeof TEMPLATE_FIELDS>])).max(10),
@@ -242,6 +252,18 @@ function campaignData(input: z.infer<typeof campaignSchema>) {
     whatsappTemplate: input.channel === "WHATSAPP" ? templateName || null : null,
     templateLanguage: input.channel === "WHATSAPP" ? language || "en" : null,
     templateParams: input.channel === "WHATSAPP" ? input.templateParams : [],
+    category: input.channel === "WHATSAPP" ? input.category : "MARKETING",
+    bestTime: input.channel === "WHATSAPP" && input.bestTime,
+    variantTemplate: input.channel === "WHATSAPP" && input.variantTemplate ? input.variantTemplate.split("|")[0]! : null,
+    variantLanguage: input.channel === "WHATSAPP" && input.variantTemplate ? input.variantTemplate.split("|")[1] || "en" : null,
+    testPercent: input.variantTemplate ? (input.testPercent ?? 20) : null,
+    testHours: input.variantTemplate ? (input.testHours ?? 4) : null,
+    headerType: input.headerMediaUrl ? (input.headerType ?? "IMAGE") : null,
+    headerMediaUrl: input.headerMediaUrl ?? null,
+    carouselMedia: input.carouselMedia,
+    // Quick-reply buttons act by their wording (see the webhook); the map is kept for the record.
+    buttonActions: input.channel === "WHATSAPP" ? { "Sign me up": "SEND_LINK", "Call me back": "CALLBACK", "Not now": "NOT_NOW" } : undefined,
+    urlButton: input.channel === "WHATSAPP" && Boolean(input.urlButton),
   };
 }
 
