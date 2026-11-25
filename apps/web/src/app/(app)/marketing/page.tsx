@@ -37,7 +37,7 @@ export default async function MarketingOverview({ searchParams }: { searchParams
       {params.demo === "loaded" ? <Notice tone="positive">Demo loaded: 180 sample contacts, 8 weeks of campaign history and demo mode switched on. Start a campaign and watch it play out here.</Notice> : null}
 
       {empty ? (
-        <Card title="Get started" description="Import your contacts, or load the demo to see everything working first.">
+        <Card title="Get started" description="Import your contacts, or load the demo to see everything working first." className="mb-6">
           <div className="flex flex-wrap gap-2">
             {ctx.role === "OWNER" ? <form action={seedDemoAction}><Button type="submit"><Sparkle size={16} /> Load the demo</Button></form> : null}
             <ButtonLink href="/marketing/contacts" variant="secondary">Import contacts</ButtonLink>
