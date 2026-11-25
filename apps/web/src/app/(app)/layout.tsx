@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { WhatsappLogo } from "@phosphor-icons/react/dist/ssr";
 import { PlatformTour } from "@/components/tour/platform-tour";
 import { isPracticeRole } from "@aah/core";
 import { ThemeToggle } from "@/components/shell/appearance";
@@ -83,7 +85,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="min-w-0 flex-1">
         <div className="shell-toolbar no-print sticky top-0 z-20 hidden items-center justify-between gap-4 px-7 md:flex">
           {staff ? <CommandBar /> : <span className="text-sm font-medium text-muted">{practice.name}</span>}
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            {staff ? (
+              <Link href="/marketing/campaigns" className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-line bg-panel px-3 text-[13px] font-medium text-ink shadow-xs transition-colors hover:border-line-strong hover:bg-subtle">
+                <WhatsappLogo className="h-4 w-4 text-[#1faa59]" weight="fill" aria-hidden /> New campaign
+              </Link>
+            ) : null}
+            <ThemeToggle />
+          </div>
         </div>
         <main className="px-4 py-6 md:px-8 md:py-9">
           <div className="mx-auto max-w-7xl">{children}</div>

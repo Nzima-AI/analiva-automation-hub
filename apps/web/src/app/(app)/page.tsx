@@ -86,8 +86,8 @@ export default async function DashboardPage() {
       <InkPanel className="px-6 pb-6 pt-7 sm:px-9 sm:pb-8 sm:pt-9">
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div className="min-w-0">
-            <p className="text-[13px] font-medium text-[#5fd3ff]">{dateLine}</p>
-            <h1 className="mt-2 editorial-heading text-[clamp(2.7rem,5vw,4.5rem)] font-normal leading-[1.1] tracking-tight text-white">
+            <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5fd3ff]"><span className="h-px w-6 bg-[#5fd3ff]/60" aria-hidden />{dateLine}</p>
+            <h1 className="mt-3 editorial-heading text-[clamp(2.9rem,5.4vw,4.9rem)] font-normal leading-[1.02] text-white">
               {greeting()}, {user.name.split(" ")[0]}
             </h1>
             <p className="mt-2 max-w-[52ch] text-sm text-white/65">
@@ -106,7 +106,7 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        <div className="mt-9 grid gap-8 sm:grid-cols-3">
+        <div className="figure-rule mt-10 grid gap-8 sm:grid-cols-3">
           <Figure label="Waiting for review" value={String(waitingTotal)} hint={waitingTotal ? "Oldest first in the queue" : "Queue is clear"} />
           <Figure label="Captured this month" value={monthTotal} hint={`${monthCount} invoice${monthCount === 1 ? "" : "s"} · VAT ${formatCents(invoicesMonth._sum.vatCents ?? 0n)}${trend === null ? "" : ` · ${trend >= 0 ? "up" : "down"} ${Math.abs(trend)}% on last month`}`} />
           <Figure label="Filed without a person" value={autoRate === null ? "-" : `${autoRate}%`} tone={autoRate !== null && autoRate >= 50 ? "up" : "default"} hint={`${autoFiled} of ${decided.length} invoices in 30 days`} />

@@ -88,7 +88,7 @@ export function CommandBar() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="no-print flex h-9 w-full max-w-md items-center gap-2 rounded-lg border border-line bg-panel px-3 text-sm text-faint shadow-xs transition-colors hover:border-line-strong hover:text-muted"
+        className="no-print flex h-10 w-full max-w-md items-center gap-2.5 rounded-xl border border-line bg-panel px-3.5 text-sm text-faint shadow-xs transition-colors hover:border-line-strong hover:text-muted"
       >
         <MagnifyingGlass className="h-4 w-4" />
         <span className="flex-1 text-left">Search clients, invoices, amounts…</span>

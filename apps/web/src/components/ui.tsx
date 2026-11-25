@@ -94,13 +94,13 @@ export function Card({
       data-reveal
       data-spotlight
       className={cx(
-        "edge-light rounded-[1.15rem] border border-line bg-panel shadow-[0_1px_0_var(--hl)_inset,var(--shadow-xs)] transition-[border-color,box-shadow] duration-500 hover:border-line-strong hover:shadow-sm",
+        "edge-light rounded-[1.25rem] border border-line bg-panel shadow-[0_1px_0_var(--hl)_inset,var(--shadow-sm)] transition-[border-color,box-shadow] duration-500 hover:border-line-strong hover:shadow-md",
         className,
       )}
     >
       <span className="edge" aria-hidden />
       {title || actions ? (
-        <header className="flex items-start justify-between gap-4 px-5 pb-1 pt-4">
+        <header className="flex items-start justify-between gap-4 px-5 pb-1 pt-[18px]">
           <div className="min-w-0">
             <h2 className="flex items-center gap-2 text-[14px] font-semibold tracking-tight text-ink">
               {Icon ? <Icon className="h-4 w-4 shrink-0 text-brand-text" weight="duotone" aria-hidden /> : null}
@@ -162,7 +162,7 @@ export function StatCard({
     </>
   );
   const cls =
-    "edge-light group block rounded-2xl border border-line bg-panel p-4 shadow-[0_1px_0_var(--hl)_inset,var(--shadow-xs)] transition-all duration-500 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]";
+    "edge-light group block rounded-[1.25rem] border border-line bg-panel p-5 shadow-[0_1px_0_var(--hl)_inset,var(--shadow-sm)] transition-all duration-500 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]";
   return href ? (
     <Link href={href} data-reveal data-spotlight className={cx(cls, "hover:-translate-y-0.5 hover:border-line-strong hover:shadow-md")}>
       {body}
@@ -280,19 +280,11 @@ export function Td({ className, ...props }: ComponentProps<"td">) {
 /** Link-based tabs; the active one is decided by the caller. */
 export function Tabs({ items }: { items: Array<{ href: string; label: string; active: boolean; count?: number }> }) {
   return (
-    <nav className="mb-6 flex gap-1 overflow-x-auto border-b border-line scroll-thin" aria-label="Sections">
+    <nav className="seg-tabs mb-6" aria-label="Sections">
       {items.map((t) => (
-        <Link
-          key={t.href}
-          href={t.href}
-          className={cx(
-            "-mb-px flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm transition-colors",
-            t.active ? "border-brand font-medium text-ink" : "border-transparent text-muted hover:text-ink",
-          )}
-          aria-current={t.active ? "page" : undefined}
-        >
+        <Link key={t.href} href={t.href} className="seg-tab" aria-current={t.active ? "page" : undefined}>
           {t.label}
-          {t.count ? <span className="rounded-full bg-subtle px-1.5 text-xs text-muted">{t.count}</span> : null}
+          {t.count ? <span className="seg-count num">{t.count}</span> : null}
         </Link>
       ))}
     </nav>
@@ -311,7 +303,7 @@ export function Progress({ value, tone = "brand" }: { value: number; tone?: "bra
 /** Ink surface: the product's signature dark panel (hero bands, key figures). */
 export function InkPanel({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <section data-reveal className={cx("ink rounded-3xl border border-white/10 shadow-[0_30px_60px_-30px_rgb(4_17_27/0.55)]", className)}>
+    <section data-reveal className={cx("ink rounded-[1.75rem] border border-white/10 shadow-[0_40px_80px_-40px_rgb(4_17_27/0.7)]", className)}>
       {children}
     </section>
   );

@@ -103,7 +103,8 @@ export function Sidebar({ sections, user, practiceName, showTier }: {
 
   const brand = (
     <Link href={home} className="shell-brand" aria-label="Analiva home">
-      <Image className="shell-mark" src="/brand/analiva-logo.png" width={710} height={500} alt="" unoptimized />
+      <Image className="shell-mark" src="/brand/analiva-mark.png" width={490} height={400} alt="" unoptimized />
+      <span className="shell-word"><strong>Analiva</strong><small>Automation Hub</small></span>
     </Link>
   );
 

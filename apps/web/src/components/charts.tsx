@@ -125,13 +125,12 @@ export function Donut({ data, height = 220, money = true }: { data: Array<{ name
 }
 
 export function MiniBars({ data, height = 48 }: { data: number[]; height?: number }) {
+  const max = Math.max(1, ...data);
   return (
-    <div style={{ height }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data.map((v, i) => ({ i, v }))} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-          <Bar dataKey="v" fill="var(--chart-1)" radius={[2, 2, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="mini-bars" style={{ height }} aria-hidden>
+      {data.map((v, i) => (
+        <span key={i} title={String(v)} data-zero={v === 0 ? "" : undefined} style={{ height: v ? `${Math.max(8, (v / max) * 100)}%` : undefined }} />
+      ))}
     </div>
   );
 }

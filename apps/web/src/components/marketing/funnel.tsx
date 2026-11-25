@@ -12,14 +12,13 @@ export function Funnel({ stats, big }: { stats: { sent: number; delivered: numbe
   return (
     <ol className="space-y-2" data-tour="funnel">
       {steps.map(([label, n], i) => (
-        <li key={label} className="grid grid-cols-[88px_minmax(0,1fr)_72px] items-center gap-3">
+        <li key={label} className="grid grid-cols-[88px_minmax(0,1fr)_auto_40px] items-center gap-3">
           <span className={big ? "text-base font-medium" : "text-sm text-ink-2"}>{label}</span>
           <span className={`${big ? "h-7" : "h-4"} overflow-hidden rounded-full bg-subtle`}>
-            <span className="block h-full rounded-full bg-brand transition-[width] duration-700" style={{ width: `${Math.max(stats.sent ? 2 : 0, pct(n, stats.sent))}%`, opacity: 1 - i * 0.12 }} />
+            <span className="block h-full rounded-full bg-gradient-to-r from-brand-strong to-brand transition-[width] duration-700" style={{ width: `${Math.max(stats.sent ? 2 : 0, pct(n, stats.sent))}%`, opacity: 1 - i * 0.12 }} />
           </span>
-          <span className={`num text-right ${big ? "text-xl font-semibold" : "text-sm"}`}>
-            {n.toLocaleString("en-US")} <span className="text-xs text-muted">{i ? `${pct(n, stats.sent)}%` : ""}</span>
-          </span>
+          <span className={`num text-right ${big ? "text-xl font-semibold" : "text-sm"}`}>{n.toLocaleString("en-US")}</span>
+          <span className="num text-right text-xs text-muted">{i ? `${pct(n, stats.sent)}%` : ""}</span>
         </li>
       ))}
     </ol>

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { cx } from "@/components/ui";
 
 export const interests = { REPORTING: "Financial reporting", BOOKKEEPING: "Bookkeeping", PAYROLL: "Payroll" } as const;
 export const sources = { WEBSITE: "Website enquiry", INBOX: "Inbox enquiry", REFERRAL: "Referral", IMPORT: "Import", MANUAL: "Manual entry" } as const;
@@ -30,19 +29,11 @@ const tabs = [
 export function MarketingTabs({ active, badge }: { active: string; badge?: number }) {
   // Demo mode banner and tour button live in the page header; the tabs are just navigation.
   return (
-    <nav aria-label="Marketing" className="-mt-2 mb-5 flex gap-1 overflow-x-auto border-b border-line">
+    <nav aria-label="Marketing" className="seg-tabs -mt-1 mb-6">
       {tabs.map((tab) => (
-        <Link
-          key={tab.href}
-          href={tab.href}
-          aria-current={active === tab.href ? "page" : undefined}
-          className={cx(
-            "-mb-px inline-flex min-h-11 items-center gap-2 whitespace-nowrap border-b-2 px-3 text-sm font-medium transition-colors",
-            active === tab.href ? "border-brand text-ink" : "border-transparent text-muted hover:text-ink",
-          )}
-        >
+        <Link key={tab.href} href={tab.href} aria-current={active === tab.href ? "page" : undefined} className="seg-tab">
           {tab.label}
-          {tab.href === "/marketing/inbox" && badge ? <span className="num rounded-full bg-brand px-1.5 text-xs text-white">{badge}</span> : null}
+          {tab.href === "/marketing/inbox" && badge ? <span className="seg-count num">{badge}</span> : null}
         </Link>
       ))}
     </nav>
