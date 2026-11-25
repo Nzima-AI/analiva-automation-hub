@@ -56,7 +56,7 @@ export default async function AutomationsPage({ searchParams }: { searchParams: 
             </ul>
           ) : null}
           <form action={saveSequence} className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid items-start gap-3 sm:grid-cols-2">
               <Field label="Name"><Input name="name" required maxLength={120} placeholder="Launch follow-up" /></Field>
               <Field label="Start when"><Select name="trigger">{Object.entries(TRIGGERS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select></Field>
             </div>
@@ -84,7 +84,7 @@ export default async function AutomationsPage({ searchParams }: { searchParams: 
                 ))}
               </ul>
             ) : null}
-            <form action={saveReminder} className="grid gap-3 sm:grid-cols-[110px_minmax(0,1fr)_auto] sm:items-end">
+            <form action={saveReminder} className="grid items-start gap-3 sm:grid-cols-[130px_minmax(0,1fr)_auto] sm:items-end">
               <input type="hidden" name="kind" value="FILING_DUE" />
               <Field label="Days before"><Input name="daysBefore" type="number" min={0} max={60} defaultValue={5} /></Field>
               <Field label="Utility template"><Select name="template" required defaultValue="">{utility.length ? <option value="" disabled>Choose</option> : <option value="">Create a utility template in Meta first</option>}{options(utility)}</Select></Field>

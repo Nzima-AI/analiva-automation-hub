@@ -164,7 +164,7 @@ export default async function MarketingPage({ searchParams }: {
           {lead ? (
             <Card title={lead.name} description={`${sources[lead.source]} · added ${date(lead.createdAt)}`}>
               <form key={lead.id} action={updateLead.bind(null, lead.id)} className="space-y-3">
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid items-start gap-3 sm:grid-cols-2">
                   <Field label="Name"><Input name="name" defaultValue={lead.name} required maxLength={200} /></Field>
                   <Field label="Company"><Input name="company" defaultValue={lead.company} maxLength={200} /></Field>
                   <Field label="Mobile"><Input name="phone" type="tel" defaultValue={formatPhone(lead.phone)} maxLength={40} /></Field>
@@ -176,7 +176,7 @@ export default async function MarketingPage({ searchParams }: {
                   </Select></Field>
                 </div>
                 <Field label="Segments" hint="Comma-separated, e.g. past client, payroll, joburg."><Input name="tags" defaultValue={lead.tags.join(", ")} maxLength={800} /></Field>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid items-start gap-3 sm:grid-cols-2">
                   <Field label="Email marketing" hint={lead.optedOutAt ? `Opted out ${date(lead.optedOutAt)}.` : lead.consentAt ? `Allowed since ${date(lead.consentAt)}.` : "No permission recorded."}>
                     <Select name="preference"><option value="unchanged">Keep as is</option><option value="opt-in">Record permission</option><option value="opt-out">Record opt-out</option></Select>
                   </Field>
@@ -228,7 +228,7 @@ export default async function MarketingPage({ searchParams }: {
               <Field label="File" hint="Columns are matched by name: name or first and last name, mobile or phone, email, company, tags, region or province.">
                 <Input name="file" type="file" accept=".csv,.vcf,text/csv,text/vcard,text/x-vcard" required />
               </Field>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid items-start gap-3 sm:grid-cols-2">
                 <Field label="Segments for everyone in the file" hint="e.g. past client, 2026 campaign"><Input name="tags" maxLength={400} /></Field>
                 <Field label="Service interest"><Select name="interest"><Options values={interests} /></Select></Field>
               </div>
@@ -243,7 +243,7 @@ export default async function MarketingPage({ searchParams }: {
           </Card>
 
           <Card title="Add a contact" description="Re-entering a known email or number updates that contact.">
-            <form key={enquiry?.fromAddress ?? "new"} action={captureLead} className="grid gap-3 sm:grid-cols-2">
+            <form key={enquiry?.fromAddress ?? "new"} action={captureLead} className="grid items-start gap-3 sm:grid-cols-2">
               <Field label="Name"><Input name="name" required maxLength={200} defaultValue={enquiry?.fromName ?? undefined} /></Field>
               <Field label="Company"><Input name="company" maxLength={200} defaultValue={enquiry?.client?.name} /></Field>
               <Field label="Mobile"><Input name="phone" type="tel" maxLength={40} placeholder="082 123 4567" /></Field>

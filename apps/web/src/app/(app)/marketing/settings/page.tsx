@@ -30,18 +30,18 @@ export default async function MarketingSettingsPage({ searchParams }: { searchPa
         <div className="space-y-5">
           <Card title="Budget, costs and sending hours" description={`WhatsApp spend this month: R ${(spent / 100).toFixed(2)}${settings.monthlyBudgetCents ? ` of R ${(settings.monthlyBudgetCents / 100).toFixed(0)}` : ""}.`}>
             <form action={saveMarketingSettings} className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid items-start gap-3 sm:grid-cols-3">
                 <Field label="Monthly budget (R)" hint="Campaigns pause when it's used up. Empty: no cap."><Input name="monthlyBudget" type="number" min={0} step={50} defaultValue={rand(settings.monthlyBudgetCents)} disabled={!isOwner} /></Field>
                 <Field label="Marketing message (R)" hint="Meta's rate; check its rate card."><Input name="marketingCost" type="number" min={0} step={0.01} defaultValue={rand(settings.marketingCostCents)} disabled={!isOwner} /></Field>
                 <Field label="Utility message (R)" hint="Reminders and updates."><Input name="utilityCost" type="number" min={0} step={0.01} defaultValue={rand(settings.utilityCostCents)} disabled={!isOwner} /></Field>
               </div>
-              <div className="grid gap-3 sm:grid-cols-4">
-                <Field label="Quiet from (hour)"><Input name="quietStart" type="number" min={0} max={23} defaultValue={settings.quietStart} disabled={!isOwner} /></Field>
-                <Field label="Until (hour)"><Input name="quietEnd" type="number" min={0} max={23} defaultValue={settings.quietEnd} disabled={!isOwner} /></Field>
-                <Field label="Auto-pause at opt-outs (%)"><Input name="autoPausePct" type="number" min={1} max={50} defaultValue={settings.autoPausePct} disabled={!isOwner} /></Field>
+              <div className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <Field label="Quiet from (hour)" hint="No sending from this hour."><Input name="quietStart" type="number" min={0} max={23} defaultValue={settings.quietStart} disabled={!isOwner} /></Field>
+                <Field label="Until (hour)" hint="Sending resumes at this hour."><Input name="quietEnd" type="number" min={0} max={23} defaultValue={settings.quietEnd} disabled={!isOwner} /></Field>
+                <Field label="Opt-out pause (%)" hint="Pause a campaign at this opt-out rate."><Input name="autoPausePct" type="number" min={1} max={50} defaultValue={settings.autoPausePct} disabled={!isOwner} /></Field>
                 <Field label="Daily limit (people)" hint="Used until Meta reports your tier."><Input name="dailyLimit" type="number" min={1} defaultValue={settings.dailyLimit} disabled={!isOwner} /></Field>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid items-start gap-3 sm:grid-cols-2">
                 <Toggle name="skipSundays" defaultChecked={settings.skipSundays} label="No messages on Sundays" />
                 <Toggle name="skipHolidays" defaultChecked={settings.skipHolidays} label="No messages on public holidays" hint="South African holidays, including Easter dates." />
                 <Toggle name="weeklyReport" defaultChecked={settings.weeklyReport} label="Weekly report every Monday" hint="A one-page summary emailed to the practice owner." />

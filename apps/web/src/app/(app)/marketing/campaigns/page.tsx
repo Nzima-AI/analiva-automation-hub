@@ -38,7 +38,7 @@ function CampaignFields({ draft, channel, templates, tpl }: { draft?: Partial<Ma
     <>
       <input type="hidden" name="channel" value={channel} />
       <Field label="Campaign name"><Input name="name" defaultValue={draft?.name} required maxLength={160} /></Field>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid items-start gap-3 sm:grid-cols-2">
         <Field label="Service interest"><Select name="interest" defaultValue={draft?.interest ?? "ALL"}><option value="ALL">Everyone</option><Options values={interests} /></Select></Field>
         <Field label="Segments" hint="Contacts must have all of these. Empty: everyone."><Input name="tags" defaultValue={draft?.tags?.join(", ")} maxLength={400} placeholder="past client" /></Field>
       </div>
@@ -52,7 +52,7 @@ function CampaignFields({ draft, channel, templates, tpl }: { draft?: Partial<Ma
         </>
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px]">
+          <div className="grid items-start gap-3 sm:grid-cols-[minmax(0,1fr)_160px]">
             <Field label="WhatsApp template" hint="Only templates Meta has approved are listed."><TemplatePicker name="template" options={options} value={tpl} required /></Field>
             <Field label="Message type" hint="Utility costs about a quarter."><Select name="category" defaultValue={draft?.category ?? chosen?.category ?? "MARKETING"}><option value="MARKETING">Marketing</option><option value="UTILITY">Utility</option></Select></Field>
           </div>
@@ -63,13 +63,13 @@ function CampaignFields({ draft, channel, templates, tpl }: { draft?: Partial<Ma
           <div data-tour="campaign-options" className="space-y-3 rounded-xl border border-line p-3">
             <p className="text-sm font-medium">Smart sending</p>
             <Toggle name="bestTime" defaultChecked={draft?.bestTime ?? true} label="Send each person at their best time" hint="The hour they usually read WhatsApp, or your best hour overall. Quiet hours, Sundays and public holidays are always skipped." />
-            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_110px_110px]">
+            <div className="grid items-start gap-3 sm:grid-cols-[minmax(0,1fr)_140px_140px]">
               <Field label="A/B test: second template" hint="Optional. The winner goes to everyone else."><Select name="variantTemplate" defaultValue={draft?.variantTemplate ? `${draft.variantTemplate}|${draft.variantLanguage ?? "en"}` : ""}><option value="">No test</option>{options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</Select></Field>
               <Field label="Test on (%)"><Input name="testPercent" type="number" min={4} max={50} defaultValue={draft?.testPercent ?? 20} /></Field>
               <Field label="Decide after (h)"><Input name="testHours" type="number" min={1} max={72} defaultValue={draft?.testHours ?? 4} /></Field>
             </div>
             {chosen?.header && chosen.header !== "TEXT" ? (
-              <div className="grid gap-3 sm:grid-cols-[140px_minmax(0,1fr)]">
+              <div className="grid items-start gap-3 sm:grid-cols-[140px_minmax(0,1fr)]">
                 <Field label="Header"><Select name="headerType" defaultValue={draft?.headerType ?? chosen.header}><option value="IMAGE">Image</option><option value="VIDEO">Video</option><option value="DOCUMENT">PDF</option></Select></Field>
                 <Field label="Header link (https)" hint="A brochure, product image or short demo video."><Input name="headerMediaUrl" type="url" defaultValue={draft?.headerMediaUrl ?? ""} maxLength={500} /></Field>
               </div>
@@ -193,7 +193,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
                 ) : campaign.status === "DRAFT" ? <p className="text-sm text-muted">The practice owner approves campaigns before they can be sent.</p> : null}
                 {campaign.status === "APPROVED" ? (
                   <form action={sendCampaign.bind(null, campaign.id)} className="space-y-3">
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid items-start gap-3 sm:grid-cols-2">
                       <Field label="When"><Select name="when"><option value="now">Start now</option><option value="later">At the time below</option></Select></Field>
                       <Field label="Date and time (SA time)"><Input name="scheduledAt" type="datetime-local" /></Field>
                     </div>

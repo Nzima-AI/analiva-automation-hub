@@ -117,10 +117,10 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
                 ))}
               </ul>
             ) : null}
-            <form action={saveSavedReply} className="grid gap-3 sm:grid-cols-[minmax(0,180px)_minmax(0,1fr)_auto] sm:items-end">
+            <form action={saveSavedReply} className="space-y-3">
               <Field label="Name"><Input name="title" required maxLength={80} placeholder="Pricing" /></Field>
-              <Field label="Reply"><Textarea name="body" required maxLength={2000} rows={1} /></Field>
-              <Button type="submit" variant="secondary">Save</Button>
+              <Field label="Reply"><Textarea name="body" required maxLength={2000} rows={3} placeholder="Analiva is R 0 extra on your current plan. Shall I set it up for you?" /></Field>
+              <div className="flex justify-end"><Button type="submit" variant="secondary">Save reply</Button></div>
             </form>
           </Card>
         </div>
