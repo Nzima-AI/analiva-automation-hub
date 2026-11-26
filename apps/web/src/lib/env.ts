@@ -15,6 +15,8 @@ export function serverEnv() {
     serviceRoleKey: required("SUPABASE_SERVICE_ROLE_KEY", process.env.SUPABASE_SERVICE_ROLE_KEY),
     documentsBucket: process.env.DOCUMENTS_BUCKET || "documents",
     requireMfa: process.env.REQUIRE_MFA !== "false",
+    /** The shared "Explore the demo" login: a staff user in the Demo Practice (slug "demo"). Empty: no demo button. */
+    demoLoginEmail: process.env.DEMO_LOGIN_EMAIL?.trim().toLowerCase() || null,
   };
 }
 

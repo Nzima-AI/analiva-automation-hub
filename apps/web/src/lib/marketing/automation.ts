@@ -287,3 +287,27 @@ export async function availableTemplates(db: TenantDb): Promise<{ templates: WaT
   const r = await listTemplates(setting);
   return { templates: r.templates.filter((t) => t.status === "APPROVED"), error: r.error, demo: false };
 }
+
+/**
+ * Puts the Demo Practice (slug "demo", used by "Explore the demo") back to its starting point:
+ * removes campaigns visitors created and rebuilds the demo contacts and history. Runs nightly.
+ */
+export async function resetDemoPractice() {
+  const practice = await rootDb().practice.findUnique({ where: { slug: "demo" }, select: { id: true } });
+  if (!practice) return { reset: false };
+  const owner = await rootDb().user.findFirst({ where: { practiceId: practice.id, role: "OWNER", disabledAt: null }, select: { id: true } });
+  if (!owner) return { reset: false };
+  const ctx = { practiceId: practice.id, userId: owner.id, role: "OWNER" as const, clientId: null };
+  const db = tenantDb(ctx);
+  const visitorCampaigns = await db.marketingCampaign.findMany({ where: { createdById: { not: owner.id } }, select: { id: true } });
+  const ids = visitorCampaigns.map((c) => c.id);
+  if (ids.length) {
+    await db.marketingSend.deleteMany({ where: { campaignId: { in: ids } } });
+    await db.marketingCampaign.deleteMany({ where: { id: { in: ids } } });
+  }
+  await db.marketingTask.deleteMany({});
+  const cleared = await clearDemo(db);
+  const seeded = await seedDemo(db, ctx);
+  await db.marketingSettings.updateMany({ data: { demoMode: true } });
+  return { reset: true, visitorCampaigns: ids.length, cleared, seeded };
+}

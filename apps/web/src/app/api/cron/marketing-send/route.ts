@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { after, NextResponse, type NextRequest } from "next/server";
 import { learnBestHours, processQueue, simulateReceipts } from "@/lib/marketing/engine";
-import { refreshQuality, runReminders, runSequences, weeklyReports } from "@/lib/marketing/automation";
+import { refreshQuality, resetDemoPractice, runReminders, runSequences, weeklyReports } from "@/lib/marketing/automation";
 import { rootDb, tenantDb } from "@aah/db";
 import { systemCtx } from "@/lib/marketing/engine";
 
@@ -37,6 +37,8 @@ export async function POST(request: NextRequest) {
     await run("simulate", () => simulateReceipts());
     await run("sequences", () => runSequences(deadline));
     if (minute % 15 === 0) await run("quality", () => refreshQuality());
+    // 02:20 South African time (00:20 UTC): the Demo Practice starts the day clean.
+    if (new Date().getUTCHours() === 0 && minute === 20) await run("demo-reset", () => resetDemoPractice());
     if (minute === 5) {
       await run("reminders", () => runReminders());
       await run("weekly", () => weeklyReports());

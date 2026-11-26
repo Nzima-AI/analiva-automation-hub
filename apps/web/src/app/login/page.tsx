@@ -4,6 +4,8 @@ import { z } from "zod";
 import { AuthShell } from "@/components/auth-shell";
 import { Button, Field, Input, Notice } from "@/components/ui";
 import { supabaseServer } from "@/lib/supabase/server";
+import { serverEnv } from "@/lib/env";
+import { Sparkle } from "@phosphor-icons/react/dist/ssr";
 
 export const metadata = { title: "Sign in" };
 
@@ -48,6 +50,16 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           Forgot your password?
         </Link>
       </p>
+      {serverEnv().demoLoginEmail ? (
+        <div className="mt-8 border-t border-line pt-6">
+          <form action="/auth/demo" method="post">
+            <Button type="submit" variant="secondary" className="w-full">
+              <Sparkle className="h-4 w-4" weight="duotone" aria-hidden /> Explore the demo
+            </Button>
+          </form>
+          <p className="mt-2 text-center text-xs text-muted">Sample practice and data. Nothing you do sends real messages.</p>
+        </div>
+      ) : null}
     </AuthShell>
   );
 }

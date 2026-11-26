@@ -6,6 +6,12 @@ import { rootDb, tenantDb } from "@aah/db";
 import { serverEnv } from "@/lib/env";
 import { supabaseServer } from "@/lib/supabase/server";
 
+/** The shared demo login: exactly the configured email, as a staff user, in the Demo Practice. */
+export function isDemoVisitor(email: string, practiceSlug: string, role: string) {
+  const demo = serverEnv().demoLoginEmail;
+  return Boolean(demo) && email.toLowerCase() === demo && practiceSlug === "demo" && role === "STAFF";
+}
+
 export interface Session {
   ctx: TenantContext;
   user: { id: string; name: string; email: string; role: TenantContext["role"] };
@@ -28,12 +34,14 @@ export const loadSession = cache(async (): Promise<SessionResult> => {
 
   const profile = await rootDb().user.findUnique({
     where: { authUserId: data.user.id },
-    include: { practice: { select: { id: true, name: true } } },
+    include: { practice: { select: { id: true, name: true, slug: true } } },
   });
   if (!profile) return { status: "no-profile", email: data.user.email };
   if (profile.disabledAt) return { status: "disabled" };
 
-  if (serverEnv().requireMfa) {
+  // The shared demo login (a staff user in the Demo Practice, sample data only) has no second step.
+  const demoVisitor = isDemoVisitor(profile.email, profile.practice.slug, profile.role);
+  if (serverEnv().requireMfa && !demoVisitor) {
     const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (aal?.currentLevel !== "aal2") {
       return { status: "mfa-required", hasFactor: aal?.nextLevel === "aal2" };
@@ -51,7 +59,7 @@ export const loadSession = cache(async (): Promise<SessionResult> => {
     session: {
       ctx,
       user: { id: profile.id, name: profile.name, email: profile.email, role: profile.role },
-      practice: profile.practice,
+      practice: { id: profile.practice.id, name: profile.practice.name },
       db: tenantDb(ctx),
     },
   };
