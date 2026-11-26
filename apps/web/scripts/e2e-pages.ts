@@ -55,7 +55,7 @@ const routes = [
   `/books/${client.id}/reports?r=gl&account=7000`,
   "/audit", "/team", "/settings", "/settings/email", "/settings/email/new",
   "/enquiries", "/enquiries?view=RESOLVED", `/clients/${client.id}/email`,
-  "/marketing", "/marketing/contacts", "/marketing/contacts?reach=whatsapp", "/marketing/campaigns", "/marketing/campaigns?channel=EMAIL", "/marketing/inbox", "/marketing/automations", "/marketing/analytics", "/marketing/settings", "/marketing/live", "/marketing/report",
+  "/marketing", "/marketing/contacts", "/marketing/contacts?reach=whatsapp", "/marketing/pipeline", "/marketing/campaigns", "/marketing/campaigns?channel=EMAIL", "/marketing/inbox", "/marketing/automations", "/marketing/analytics", "/marketing/settings", "/marketing/live", "/marketing/report",
   ...(invoice ? [`/invoices/${invoice.id}/send`] : []),
   ...(invoice ? [`/invoices/${invoice.id}`] : []),
   ...(capture ? [`/review/${capture.id}`] : []),
