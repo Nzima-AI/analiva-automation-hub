@@ -5,7 +5,9 @@ import {
   bestSlots,
   engagementScore,
   forecast,
+  matchKeyword,
   nextSendTime,
+  normaliseKeyword,
   randFromCents,
   readHours,
   saMoment,
@@ -96,5 +98,20 @@ describe("analytics", () => {
     expect(simulateOutcome("x1", 8)).toEqual(simulateOutcome("x1", 8));
     const rate = (hour: number) => Array.from({ length: 400 }, (_, i) => simulateOutcome(`s${i}`, hour)).filter((o) => o.readAfterMin != null).length;
     expect(rate(8)).toBeGreaterThan(rate(14));
+  });
+});
+
+describe("keyword auto-replies", () => {
+  const rules = [{ keyword: "PRICE", active: true }, { keyword: "vat return", active: true }, { keyword: "HELP", active: false }];
+  it("matches the whole message, ignoring case, punctuation and #", () => {
+    expect(normaliseKeyword("  Vat   return!! ")).toBe("VAT RETURN");
+    expect(matchKeyword("price", rules)?.keyword).toBe("PRICE");
+    expect(matchKeyword("#Price?", rules)?.keyword).toBe("PRICE");
+    expect(matchKeyword("VAT return", rules)?.keyword).toBe("vat return");
+  });
+  it("ignores sentences, inactive rules and STOP/START", () => {
+    expect(matchKeyword("what is the price for payroll", rules)).toBeNull();
+    expect(matchKeyword("help", rules)).toBeNull();
+    expect(matchKeyword("STOP", [{ keyword: "STOP", active: true }])).toBeNull();
   });
 });

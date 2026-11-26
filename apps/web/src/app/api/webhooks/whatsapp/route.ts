@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { isOptOutReply, normalizePhone, saParts, tagReply } from "@aah/core";
+import { isOptOutReply, matchKeyword, normalizePhone, saParts, tagReply } from "@aah/core";
 import { decryptSecret } from "@aah/core/secrets";
 import { rootDb, tenantDb } from "@aah/db";
 import { secretsKey } from "@/lib/env";
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       const buttonText = message.button?.text ?? message.interactive?.button_reply?.title ?? null;
       const text = flow ? "[Form submitted]" : (message.text?.body ?? buttonText ?? `[${message.type}]`);
       const phone = normalizePhone(`+${message.from}`) ?? message.from;
-      const lead = await db.marketingLead.findFirst({ where: { phone }, select: { id: true, name: true, whatsappOptedOutAt: true } });
+      const lead = await db.marketingLead.findFirst({ where: { phone }, select: { id: true, name: true, whatsappOptedOutAt: true, tags: true } });
       const action = buttonText ? buttonAction(buttonText) : null;
       const optOut = action === "STOP" || isOptOutReply(text);
       const tag = optOut ? "STOP" : action === "CALLBACK" ? "CALLBACK" : action === "SEND_LINK" || flow ? "INTERESTED" : tagReply(text);
@@ -124,6 +124,7 @@ export async function POST(request: NextRequest) {
         await reply("Welcome back! You'll hear from us again.");
         continue;
       }
+      const keyword = !action && !flow ? matchKeyword(text, await db.marketingKeyword.findMany({ where: { active: true } })) : null;
       if (lead && action === "SEND_LINK" && latest) {
         await reply(`Great! Here's your personal link: ${trackedLink(latest.token)}`);
       } else if (lead && action === "CALLBACK") {
@@ -146,6 +147,13 @@ export async function POST(request: NextRequest) {
           },
         });
         await db.marketingTask.create({ data: { practiceId: setting.practiceId, leadId: lead.id, kind: "FORM", note: "Filled in the WhatsApp sign-up form" } });
+      } else if (keyword) {
+        // A keyword auto-reply (e.g. PRICE, VAT): answered at once, free inside the 24-hour window.
+        await reply(keyword.reply);
+        await db.marketingKeyword.updateMany({ where: { id: keyword.id }, data: { hits: { increment: 1 } } });
+        await db.whatsAppMessage.updateMany({ where: { providerId: message.id }, data: { handledAt: now } });
+        if (lead && keyword.tag && !lead.tags.includes(keyword.tag)) await db.marketingLead.updateMany({ where: { id: lead.id }, data: { tags: { push: keyword.tag } } });
+        await db.auditLog.create({ data: { practiceId: setting.practiceId, actorType: "SYSTEM", actorLabel: "Keyword auto-reply", action: "keyword.replied", entityType: "MarketingKeyword", entityId: keyword.id, metadata: { keyword: keyword.keyword } } });
       } else {
         const settings = await marketingSettings(db);
         const { hour } = saParts(now);

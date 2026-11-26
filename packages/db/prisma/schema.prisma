@@ -258,6 +258,8 @@ model Practice {
   marketingAlerts    MarketingAlert[]
   marketingTasks     MarketingTask[]
   savedReplies       MarketingSavedReply[]
+  marketingKeywords  MarketingKeyword[]
+  marketingNotes     MarketingNote[]
   sequences          MarketingSequence[]
   sequenceEnrollments SequenceEnrollment[]
   reminderRules      ReminderRule[]
@@ -1038,6 +1040,7 @@ model MarketingLead {
 
   practice Practice @relation(fields: [practiceId], references: [id])
   sends    MarketingSend[]
+  notes        MarketingNote[]
 
   @@unique([practiceId, email])
   @@unique([practiceId, phone])
@@ -1234,6 +1237,9 @@ model MarketingSettings {
   autoReplyText      String?
   weeklyReport       Boolean   @default(true)
   lastWeeklyReportAt DateTime?
+  /// Public opt-in page (/join/<practice slug>): off until the owner switches it on.
+  optInEnabled       Boolean   @default(false)
+  optInHeadline      String?
   updatedAt          DateTime  @updatedAt
 
   practice Practice @relation(fields: [practiceId], references: [id])
@@ -1268,6 +1274,39 @@ model MarketingTask {
   practice Practice @relation(fields: [practiceId], references: [id])
 
   @@index([practiceId, doneAt, dueAt])
+}
+
+/// Keyword auto-replies: an inbound WhatsApp message that is just the keyword gets the reply at once
+/// (free: the person has just messaged, so the 24-hour window is open).
+model MarketingKeyword {
+  id         String   @id @default(cuid())
+  practiceId String
+  keyword    String
+  reply      String
+  tag        String?
+  active     Boolean  @default(true)
+  hits       Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  practice Practice @relation(fields: [practiceId], references: [id])
+
+  @@unique([practiceId, keyword])
+}
+
+/// A note on a contact, shown on its timeline.
+model MarketingNote {
+  id          String   @id @default(cuid())
+  practiceId  String
+  leadId      String
+  body        String
+  createdById String
+  createdAt   DateTime @default(now())
+
+  practice Practice      @relation(fields: [practiceId], references: [id])
+  lead     MarketingLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, createdAt])
 }
 
 model MarketingSavedReply {

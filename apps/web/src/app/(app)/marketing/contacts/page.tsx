@@ -3,7 +3,7 @@ import { Prisma } from "@aah/db";
 import { Badge, Button, Card, Field, Input, Notice, PageHeader, Select, StatCard, Textarea } from "@/components/ui";
 import { requireStaff } from "@/lib/session";
 import { captureLead, importContacts, markSignedUp, updateLead } from "../actions";
-import { syncClientsToContacts } from "../growth-actions";
+import { addLeadNote, syncClientsToContacts } from "../growth-actions";
 import { formatPhone, interests, MarketingTabs, Options, sources, stages } from "../shared";
 
 export const metadata = { title: "Marketing contacts" };
@@ -70,11 +70,32 @@ export default async function MarketingPage({ searchParams }: {
       select: { fromName: true, fromAddress: true, client: { select: { name: true } } },
     }) : null,
   ]);
-  const [owners, activity, history] = await Promise.all([
+  const [owners, activity, history, messages, notes, tasks] = await Promise.all([
     lead ? db.user.findMany({ where: { role: { in: ["OWNER", "STAFF"] }, disabledAt: null }, select: { id: true, name: true }, orderBy: { name: "asc" } }) : [],
     lead ? db.auditLog.findMany({ where: { entityType: "MarketingLead", entityId: lead.id }, orderBy: { createdAt: "desc" }, take: 8 }) : [],
-    lead ? db.marketingSend.findMany({ where: { leadId: lead.id }, include: { campaign: { select: { id: true, name: true } } }, orderBy: { createdAt: "desc" }, take: 8 }) : [],
+    lead ? db.marketingSend.findMany({ where: { leadId: lead.id }, include: { campaign: { select: { id: true, name: true } } }, orderBy: { createdAt: "desc" }, take: 30 }) : [],
+    lead ? db.whatsAppMessage.findMany({ where: { OR: [{ leadId: lead.id }, ...(lead.phone ? [{ fromPhone: lead.phone }] : [])] }, orderBy: { receivedAt: "desc" }, take: 40 }) : [],
+    lead ? db.marketingNote.findMany({ where: { leadId: lead.id }, orderBy: { createdAt: "desc" }, take: 30 }) : [],
+    lead ? db.marketingTask.findMany({ where: { leadId: lead.id }, orderBy: { createdAt: "desc" }, take: 20 }) : [],
   ]);
+  // One timeline for the contact: campaign events, WhatsApp messages both ways, notes and tasks, newest first.
+  type Moment = { at: Date; kind: "sent" | "read" | "clicked" | "replied" | "signup" | "in" | "out" | "note" | "task"; text: string; href?: string };
+  const timeline: Moment[] = lead ? [
+    ...history.flatMap((send) => {
+      const href = `/marketing/campaigns?campaign=${send.campaign.id}`;
+      const out: Moment[] = [];
+      if (send.sentAt) out.push({ at: send.sentAt, kind: "sent", text: `Sent "${send.campaign.name}"`, href });
+      if (send.readAt) out.push({ at: send.readAt, kind: "read", text: `Read "${send.campaign.name}"`, href });
+      if (send.clickedAt) out.push({ at: send.clickedAt, kind: "clicked", text: "Opened their link", href });
+      if (send.signedUpAt) out.push({ at: send.signedUpAt, kind: "signup", text: "Signed up", href });
+      return out;
+    }),
+    ...messages.map((m): Moment => ({ at: m.receivedAt, kind: m.direction === "OUT" ? "out" : "in", text: m.body })),
+    ...notes.map((n): Moment => ({ at: n.createdAt, kind: "note", text: n.body })),
+    ...tasks.map((t): Moment => ({ at: t.createdAt, kind: "task", text: `${t.kind === "CALLBACK" ? "Call-back requested" : "Task"}${t.note ? `: ${t.note}` : ""}${t.doneAt ? " (done)" : ""}` })),
+  ].sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, 60) : [];
+  const momentLabel: Record<Moment["kind"], string> = { sent: "Campaign", read: "Read", clicked: "Clicked", replied: "Replied", signup: "Signed up", in: "WhatsApp from them", out: "WhatsApp to them", note: "Note", task: "Task" };
+  const when = (d: Date) => new Intl.DateTimeFormat("en-ZA", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Africa/Johannesburg" }).formatToParts(d).map((x) => x.value).join("").replace(",", "");
 
   const filterHref = (patch: Record<string, string | null>) => {
     const next = new URLSearchParams();
@@ -109,7 +130,7 @@ export default async function MarketingPage({ searchParams }: {
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-5">
-          <Card title="Contacts" description={`${matching} match${matching === 1 ? "es" : ""}${q || tag || stage || reach !== "any" ? " these filters" : ""}.`}>
+          <Card tour="contacts" title="Contacts" description={`${matching} match${matching === 1 ? "es" : ""}${q || tag || stage || reach !== "any" ? " these filters" : ""}.`} actions={<a href="/api/marketing/contacts-export" className="inline-flex h-8 items-center rounded-lg border border-line bg-panel px-3 text-xs font-medium text-ink shadow-xs hover:bg-subtle" title="Every contact with consent evidence, as a spreadsheet (POPIA requests, backups)">Export CSV</a>}>
             <form action="/marketing/contacts" className="mb-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto]">
               <Input name="q" aria-label="Search contacts" placeholder="Search contacts" defaultValue={q} maxLength={200} />
               <Select name="reach" aria-label="Permission" defaultValue={reach}><Options values={reaches} /></Select>
@@ -195,27 +216,29 @@ export default async function MarketingPage({ searchParams }: {
                   <Button type="submit" variant="secondary">Mark as signed up</Button>
                 </form>
               ) : <p className="mt-3 text-sm text-positive">Signed up on {date(lead.signedUpAt)}.</p>}
-              {history.length ? (
-                <div className="mt-5 border-t border-line pt-3">
-                  <h3 className="text-sm font-medium">Campaigns</h3>
-                  <ul className="mt-2 space-y-1 text-sm">
-                    {history.map((send) => (
-                      <li key={send.id} className="flex justify-between gap-3">
-                        <Link className="min-w-0 truncate text-brand hover:underline" href={`/marketing/campaigns?campaign=${send.campaign.id}`}>{send.campaign.name}</Link>
-                        <span className="shrink-0 text-muted">{send.signedUpAt ? "Signed up" : send.clickedAt ? "Clicked" : send.repliedAt ? "Replied" : send.status.toLowerCase()}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
               {activity.length ? (
-                <div className="mt-5 border-t border-line pt-3">
-                  <h3 className="text-sm font-medium">Activity</h3>
-                  <ul className="mt-2 space-y-1 text-sm text-muted">
-                    {activity.map((entry) => <li key={entry.id}>{entry.action.replace("lead.", "").replace("_", " ")} · {date(entry.createdAt)}{entry.actorLabel ? ` · ${entry.actorLabel}` : ""}</li>)}
-                  </ul>
-                </div>
+                <p className="mt-4 border-t border-line pt-3 text-xs text-muted">Last change: {activity[0]!.action.replace("lead.", "").replace("_", " ")} · {date(activity[0]!.createdAt)}{activity[0]!.actorLabel ? ` · ${activity[0]!.actorLabel}` : ""}</p>
               ) : null}
+            </Card>
+          ) : null}
+
+          {lead ? (
+            <Card title="Timeline" description="Everything with this contact: campaigns, WhatsApp messages both ways, notes and call-backs.">
+              <form action={addLeadNote.bind(null, lead.id)} className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start">
+                <Textarea name="body" rows={2} required maxLength={2000} placeholder="Add a note, e.g. Spoke on the phone, wants payroll from March." className="min-h-0 flex-1" />
+                <Button type="submit" variant="secondary" className="sm:mt-0.5">Add note</Button>
+              </form>
+              {timeline.length ? (
+                <ol className="relative space-y-3 border-l border-line pl-5">
+                  {timeline.map((m, k) => (
+                    <li key={k} className="relative">
+                      <span className={`absolute -left-[25px] top-1.5 h-2 w-2 rounded-full border-2 border-panel ${m.kind === "signup" ? "bg-positive" : m.kind === "in" ? "bg-[#25d366]" : m.kind === "note" ? "bg-warn" : "bg-brand"}`} aria-hidden />
+                      <p className="flex flex-wrap items-baseline justify-between gap-x-3 text-xs text-muted"><span className="font-medium text-ink-2">{momentLabel[m.kind]}</span><span className="num">{when(m.at)}</span></p>
+                      {m.href ? <Link href={m.href} className="text-sm text-brand-text hover:underline">{m.text}</Link> : <p className={`whitespace-pre-wrap text-sm ${m.kind === "in" || m.kind === "out" ? "rounded-lg bg-subtle px-3 py-2" : ""}`}>{m.text}</p>}
+                    </li>
+                  ))}
+                </ol>
+              ) : <p className="text-sm text-muted">Nothing yet. Campaigns, messages and notes appear here.</p>}
             </Card>
           ) : null}
 
@@ -223,7 +246,7 @@ export default async function MarketingPage({ searchParams }: {
             <form action={syncClientsToContacts}><Button type="submit" variant="secondary">Sync my clients</Button></form>
           </Card>
 
-          <Card title="Import contacts" description="A spreadsheet (.csv), a Google or Outlook contacts export, or your phone's contacts export (.vcf). Up to 5,000 at a time.">
+          <Card tour="import" title="Import contacts" description="A spreadsheet (.csv), a Google or Outlook contacts export, or your phone's contacts export (.vcf). Up to 5,000 at a time.">
             <form action={importContacts} className="space-y-3">
               <Field label="File" hint="Columns are matched by name: name or first and last name, mobile or phone, email, company, tags, region or province.">
                 <Input name="file" type="file" accept=".csv,.vcf,text/csv,text/vcard,text/x-vcard" required />

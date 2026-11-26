@@ -1,8 +1,8 @@
-import { Badge, Button, Card, Field, Input, Notice, PageHeader, Select } from "@/components/ui";
+import { Badge, Button, Card, Field, Input, Notice, PageHeader, Select, Textarea, Toggle } from "@/components/ui";
 import { availableTemplates } from "@/lib/marketing/automation";
-import { appUrl } from "@/lib/marketing/engine";
+import { appUrl, marketingSettings } from "@/lib/marketing/engine";
 import { requireStaff } from "@/lib/session";
-import { saveReminder, saveSequence, toggleReminder, toggleSequence } from "../growth-actions";
+import { deleteKeyword, saveKeyword, saveOptIn, saveReminder, saveSequence, toggleKeyword, toggleReminder, toggleSequence } from "../growth-actions";
 import { MarketingTabs } from "../shared";
 
 export const metadata = { title: "Marketing automations" };
@@ -11,8 +11,11 @@ const TRIGGERS = { NEW_CONTACT: "A new contact is added", CAMPAIGN_SENT: "A camp
 const CONDITIONS = { ALL: "Always", NOT_CLICKED: "Only if they haven't clicked", NOT_SIGNED_UP: "Only if they haven't signed up" } as const;
 
 export default async function AutomationsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  const { db } = await requireStaff();
+  const { db, ctx, practice } = await requireStaff();
   const params = await searchParams;
+  const isOwner = ctx.role === "OWNER";
+  const [keywords, settings] = await Promise.all([db.marketingKeyword.findMany({ orderBy: [{ active: "desc" }, { keyword: "asc" }] }), marketingSettings(db)]);
+  const joinLink = `${appUrl()}/join/${practice.slug}`;
   const [{ templates }, sequences, reminders, campaigns, whatsapp, enrolled, topReferrers] = await Promise.all([
     availableTemplates(db),
     db.marketingSequence.findMany({ orderBy: { createdAt: "desc" } }),
@@ -31,10 +34,59 @@ export default async function AutomationsPage({ searchParams }: { searchParams: 
 
   return (
     <>
-      <PageHeader title="Automations" subtitle="Set them up once and they keep working: follow-ups, reminders, referrals and your WhatsApp link." />
+      <PageHeader title="Automations" subtitle="Set them up once and they keep working: keyword replies, follow-ups, reminders, referrals, your sign-up page and your WhatsApp link." />
       <MarketingTabs active="/marketing/automations" />
       {params.saved ? <Notice tone="positive">Saved.</Notice> : null}
       {params.error ? <Notice tone="warn">{params.error}</Notice> : null}
+
+      <div className="mb-5 grid items-start gap-5 xl:grid-cols-2">
+        <Card tour="keywords" title="Keyword auto-replies" description="When someone sends just the keyword, e.g. PRICE or VAT, they get your answer at once. Free: they have just messaged you, so WhatsApp's 24-hour window is open. Not case-sensitive.">
+          {keywords.length ? (
+            <ul className="mb-4 divide-y divide-line">
+              {keywords.map((k) => (
+                <li key={k.id} className="flex items-start justify-between gap-3 py-2.5 text-sm">
+                  <span className="min-w-0">
+                    <span className="flex flex-wrap items-center gap-2"><b className="num font-medium">{k.keyword}</b><Badge tone={k.active ? "positive" : "neutral"}>{k.active ? "On" : "Off"}</Badge>{k.tag ? <Badge tone="brand">adds {k.tag}</Badge> : null}<span className="text-xs text-muted">{k.hits} repl{k.hits === 1 ? "y" : "ies"} sent</span></span>
+                    <span className="mt-1 block whitespace-pre-wrap text-muted">{k.reply}</span>
+                  </span>
+                  <span className="flex shrink-0 gap-1">
+                    <form action={toggleKeyword.bind(null, k.id)}><Button type="submit" variant="ghost" size="sm">{k.active ? "Turn off" : "Turn on"}</Button></form>
+                    <form action={deleteKeyword.bind(null, k.id)}><Button type="submit" variant="ghost" size="sm">Delete</Button></form>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="mb-4 text-sm text-muted">No keywords yet. Popular ones: PRICE, VAT, PAYROLL, HOURS, HELP.</p>}
+          <form action={saveKeyword} className="space-y-3">
+            <div className="grid items-start gap-3 sm:grid-cols-2">
+              <Field label="Keyword" hint="One word or a short phrase. STOP and START are reserved."><Input name="keyword" required maxLength={40} placeholder="PRICE" /></Field>
+              <Field label="Add to segment (optional)" hint="e.g. asked-price, to follow up later."><Input name="tag" maxLength={60} /></Field>
+            </div>
+            <Field label="Reply"><Textarea name="reply" required rows={3} maxLength={1000} placeholder="Our Analiva plans start at R 289 a month, with a 14-day free trial. Reply CALL and we'll phone you." /></Field>
+            <Button type="submit" variant="secondary">Save keyword</Button>
+          </form>
+        </Card>
+
+        <Card tour="opt-in" title="Your WhatsApp sign-up page" description="A public page where people join your WhatsApp list themselves. Their permission is recorded with the date as POPIA evidence, and they land in Contacts tagged opt-in.">
+          {isOwner ? (
+            <form action={saveOptIn} className="space-y-3">
+              <Toggle name="optInEnabled" defaultChecked={settings.optInEnabled} label="Sign-up page is open" hint="Off: the page shows Not found." />
+              <Field label="Headline (optional)"><Input name="optInHeadline" defaultValue={settings.optInHeadline ?? ""} maxLength={160} placeholder={`Get updates from ${practice.name} on WhatsApp`} /></Field>
+              <Button type="submit" variant="secondary">Save</Button>
+            </form>
+          ) : <p className="text-sm text-muted">The practice owner switches the sign-up page on or off.</p>}
+          {settings.optInEnabled ? (
+            <div className="mt-4 flex flex-col gap-4 border-t border-line pt-4 sm:flex-row sm:items-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=8&data=${encodeURIComponent(joinLink)}`} alt="QR code that opens the WhatsApp sign-up page" width={160} height={160} className="rounded-xl border border-line" />
+              <div className="min-w-0 flex-1 space-y-2 text-sm">
+                <Field label="Sign-up page"><Input readOnly value={joinLink} /></Field>
+                <a href={joinLink} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center text-brand hover:underline">Open the page</a>
+              </div>
+            </div>
+          ) : null}
+        </Card>
+      </div>
 
       <div data-tour="automations" className="grid items-start gap-5 xl:grid-cols-2">
         <Card title="Follow-up sequences" description="Messages that go out on their own after something happens, with a delay and a condition per step.">

@@ -198,5 +198,18 @@ assert.ok(decided.winner === "A" || decided.winner === "B", "A/B winner chosen")
 assert.ok((await tdb.marketingSend.count({ where: { campaignId: demo.id, variant: null, sentAt: { not: null } } })) > 0, "rest sent after the winner");
 
 void noConsent; void optedOut; void allowed;
+// Keyword auto-replies: the whole message must be the keyword; the reply goes out, the contact is tagged.
+const kwLead = otherTag;
+await tdb.marketingKeyword.create({ data: { practiceId: practice.id, keyword: "QUOTE", reply: "Plans start at R 289 a month.", tag: "asked-price" } });
+const callsBeforeKeyword = calls.length;
+await hook(value({ messages: [{ id: "wamid.kw1", from: kwLead.phone!, type: "text", text: { body: "#quote!" } }] }));
+assert.equal(calls.length, callsBeforeKeyword + 1, "the keyword reply was sent");
+assert.equal(((calls.at(-1)!.body.text as { body: string }).body), "Plans start at R 289 a month.");
+assert.ok((await tdb.marketingLead.findFirst({ where: { id: kwLead.id } }))!.tags.includes("asked-price"), "the keyword's segment was added");
+assert.equal((await tdb.marketingKeyword.findFirst({ where: { keyword: "QUOTE" } }))!.hits, 1);
+assert.ok((await tdb.whatsAppMessage.findFirst({ where: { providerId: "wamid.kw1" } }))!.handledAt, "the incoming message counts as handled");
+await hook(value({ messages: [{ id: "wamid.kw2", from: kwLead.phone!, type: "text", text: { body: "can I get a quote for payroll?" } }] }));
+assert.equal((await tdb.marketingKeyword.findFirst({ where: { keyword: "QUOTE" } }))!.hits, 1, "a sentence that mentions the word is not a keyword");
+
 console.log("e2e-marketing: all checks passed");
 process.exit(0);

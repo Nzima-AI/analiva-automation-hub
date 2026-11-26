@@ -249,3 +249,19 @@ export function simulateOutcome(seed: string, sentHour: number, button?: boolean
     signedUp,
   };
 }
+
+/** "Vat return!" -> "VAT RETURN": how keywords and incoming messages are compared. */
+export function normaliseKeyword(text: string): string {
+  return text.normalize("NFKC").replace(/^#/, "").replace(/[^\p{L}\p{N} ]+/gu, " ").replace(/\s+/g, " ").trim().toUpperCase();
+}
+
+/**
+ * The keyword rule an incoming WhatsApp message triggers: the whole message must be the keyword
+ * (any case, punctuation and a leading # ignored), so ordinary sentences don't set off replies.
+ * STOP and START are never keywords: they are opt-out and opt-in.
+ */
+export function matchKeyword<T extends { keyword: string; active: boolean }>(text: string, rules: T[]): T | null {
+  const said = normaliseKeyword(text);
+  if (!said || said === "STOP" || said === "START") return null;
+  return rules.find((r) => r.active && normaliseKeyword(r.keyword) === said) ?? null;
+}

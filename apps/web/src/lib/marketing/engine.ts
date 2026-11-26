@@ -44,6 +44,8 @@ export const DEFAULT_SETTINGS = {
   autoReplyText: null as string | null,
   weeklyReport: true,
   lastWeeklyReportAt: null as Date | null,
+  optInEnabled: false,
+  optInHeadline: null as string | null,
 };
 export type Settings = typeof DEFAULT_SETTINGS & { id?: string };
 

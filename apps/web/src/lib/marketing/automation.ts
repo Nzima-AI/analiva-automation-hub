@@ -117,6 +117,16 @@ export async function seedDemo(db: TenantDb, ctx: TenantContext) {
       { practiceId: ctx.practiceId, title: "Sign-up help", body: "Happy to help. Reply with your email address and we'll set it up for you." },
     ],
   });
+  // Keyword auto-replies and a few notes, so every CRM feature shows something in the demo.
+  for (const [keyword, reply, hits] of [
+    ["PRICE", "Analiva plans start at R 289 a month, with a 14-day free trial. Reply CALL and we'll phone you to set it up.", 37],
+    ["VAT", "Your VAT201 is due on the 25th of the month after your period ends. Send us your invoices by the 10th and we'll do the rest.", 22],
+    ["HOURS", "We're open Monday to Friday, 08:00 to 17:00. WhatsApp us any time and we'll reply first thing.", 9],
+  ] as const) {
+    await db.marketingKeyword.upsert({ where: { practiceId_keyword: { practiceId: ctx.practiceId, keyword } }, create: { practiceId: ctx.practiceId, keyword, reply, hits }, update: {} });
+  }
+  const notes = ["Spoke on the phone: wants payroll from March. Send the Business plan.", "Asked about VAT registration for the new branch.", "Prefers WhatsApp to email. Follow up after month-end."];
+  for (const [k, lead] of created.slice(0, 3).entries()) await db.marketingNote.create({ data: { practiceId: ctx.practiceId, leadId: lead.id, body: notes[k]!, createdById: ctx.userId } });
   await audit(ctx, { action: "lead.imported", entityType: "MarketingLead", entityId: ctx.practiceId, reason: `Demo data: ${created.length} contacts and 8 weeks of campaign history` });
   return { created: created.length, already: 0 };
 }

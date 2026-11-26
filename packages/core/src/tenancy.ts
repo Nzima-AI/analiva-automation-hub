@@ -87,6 +87,8 @@ export const MODEL_OWNERSHIP: Record<string, Ownership> = {
   MarketingAlert: "practice",
   MarketingTask: "practice",
   MarketingSavedReply: "practice",
+  MarketingKeyword: "practice",
+  MarketingNote: "practice",
   MarketingSequence: "practice",
   SequenceEnrollment: "practice",
   ReminderRule: "practice",

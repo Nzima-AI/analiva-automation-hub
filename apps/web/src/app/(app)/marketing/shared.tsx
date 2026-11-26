@@ -21,6 +21,7 @@ const tabs = [
   { href: "/marketing/campaigns", label: "Campaigns" },
   { href: "/marketing/inbox", label: "Inbox" },
   { href: "/marketing/contacts", label: "Contacts" },
+  { href: "/marketing/pipeline", label: "Pipeline" },
   { href: "/marketing/automations", label: "Automations" },
   { href: "/marketing/analytics", label: "Analytics" },
   { href: "/marketing/settings", label: "Settings" },

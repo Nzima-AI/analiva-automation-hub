@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ArrowLeft, ArrowRight, BookOpen, Broadcast, ChartLineUp, ChatsCircle, Clock, Compass, DeviceMobile, Fire, Flask, Gauge, ListChecks,
-  MagnifyingGlass, PaperPlaneTilt, Phone, Robot, Scan, SquaresFour, Tray, UsersThree, WhatsappLogo, X, type Icon,
+  Funnel, GearSix, MagnifyingGlass, PaperPlaneTilt, Phone, QrCode, Repeat, Robot, Scan, SquaresFour, Tray, UsersThree, WhatsappLogo, X, type Icon,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui";
 
@@ -23,16 +23,27 @@ type Step =
 
 const STAFF: Step[] = [
   { splash: "welcome" },
-  { href: "/", target: '[data-tour="dash-hero"]', icon: Gauge, title: "Your practice at a glance", body: "What's waiting for review, what was captured this month and how much filed itself without a person. Every figure opens the work behind it." },
-  { href: "/", target: ".desktop-sidebar", icon: SquaresFour, title: "One workspace for the whole practice", body: "Inbox, review, clients, books, deadlines and WhatsApp marketing work from the same records. Badges show what needs action in each area.", desktop: true },
-  { href: "/", target: '[data-tour="wa-band"]', icon: WhatsappLogo, title: "WhatsApp, front and centre", body: "Today's sends, read rate, replies waiting and sign-ups, straight on the dashboard. One click opens mission control." },
-  { href: "/marketing", target: '[data-tour="kpis"]', icon: Broadcast, title: "Mission control", body: "Every campaign, reply and sign-up as it happens, with WhatsApp spend against your monthly budget.", points: [[PaperPlaneTilt, "Sent, read and replied, live"], [Fire, "Sign-ups this week"], [Gauge, "Spend against budget"]] },
-  { href: "/marketing", target: '[data-tour="hot-leads"]', icon: Phone, title: "Who to phone today", body: "The warmest contacts who haven't signed up yet, scored from how they read, click and reply, with the hour they usually read WhatsApp." },
-  { href: "/marketing/campaigns?new=whatsapp", target: '[data-tour="phone-preview"]', icon: DeviceMobile, title: "See it on a phone before it goes", body: "The message exactly as each contact will get it, with their name filled in. Flip through contacts, check the cost estimate, then send.", points: [[Clock, "Sent at each person's best time"], [Flask, "A/B test two messages"], [ListChecks, "Quiet hours, Sundays and holidays skipped"]] },
-  { href: "/marketing/analytics", target: '[data-tour="heatmap"]', icon: ChartLineUp, title: "The best day and hour to send", body: "A heatmap of when your clients read, click and sign up, learned from every campaign. The next campaign goes out when it will land." },
-  { href: "/marketing/inbox", target: '[data-tour="inbox"]', icon: ChatsCircle, title: "Every reply in one inbox", body: "Replies are tagged as interested, price questions, call-backs, complaints or opt-outs. Answer, assign or send the sign-up link in one click." },
-  { href: "/marketing/automations", target: '[data-tour="automations"]', icon: Robot, title: "Follow-ups that run themselves", body: "Sequences for people who read but didn't click, filing reminders before each deadline, and referral links that track who brought whom." },
-  { href: "/review", target: '[data-tour="review-queue"]', icon: Scan, title: "Only the exceptions reach you", body: "Invoices from the inbox are read and filed automatically. Anything the Hub isn't sure about waits here, with the original beside the extracted fields." },
+  // The practice
+  { href: "/", target: '[data-tour="dash-hero"]', icon: Gauge, title: "Your practice at a glance", body: "Start each day here. It shows what's waiting for review, what was captured this month and how much filed itself without a person. Click any figure to open the work behind it." },
+  { href: "/", target: ".desktop-sidebar", icon: SquaresFour, title: "Everything in one menu", body: "Inbox, review, clients, books, deadlines and WhatsApp marketing all work from the same records. A number on a menu item means something there needs you.", desktop: true },
+  { href: "/", target: '[data-tour="wa-band"]', icon: WhatsappLogo, title: "WhatsApp, front and centre", body: "Today's sends, read rate, replies waiting and sign-ups this week, straight on the dashboard. Click the band to open mission control." },
+  // WhatsApp marketing
+  { href: "/marketing", target: '[data-tour="kpis"]', icon: Broadcast, title: "Mission control", body: "The home of WhatsApp marketing. Check it each morning: what went out, how many read it, who replied and who signed up, with spend against your monthly budget.", points: [[PaperPlaneTilt, "Sent, read and replied, live"], [Fire, "Sign-ups this week"], [Gauge, "Spend against budget; sending pauses at the limit"]] },
+  { href: "/marketing", target: '[data-tour="mission-control"]', icon: ChartLineUp, title: "Watch a campaign land", body: "While a campaign runs, follow it from sent to delivered, read, clicked and signed up. The Hub forecasts where it will end and shows the cost per sign-up. Open Live wall to put it on a big screen." },
+  { href: "/marketing", target: '[data-tour="hot-leads"]', icon: Phone, title: "Who to phone today", body: "The warmest contacts who haven't signed up yet, scored from how they read, click and reply. Each shows the hour they usually read WhatsApp, so you know when to call." },
+  { href: "/marketing/contacts", target: '[data-tour="import"]', icon: UsersThree, title: "Bring in your contacts", body: "Import a spreadsheet or your phone's contacts (up to 5,000 at a time), or press Sync my clients to add every Hub client. Permission is recorded per contact, as POPIA requires.", points: [[Tray, "CSV, Excel, Google, Outlook or phone (.vcf)"], [ListChecks, "WhatsApp and email permission kept separately"], [UsersThree, "Segments such as past client or payroll"]] },
+  { href: "/marketing/contacts", target: '[data-tour="contacts"]', icon: MagnifyingGlass, title: "Every contact, with their history", body: "Search and filter by segment, stage or who you can reach. Open a contact to see their timeline (every campaign, WhatsApp message, note and call-back) and add a note after a call. Export CSV gives you everything with consent evidence." },
+  { href: "/marketing/pipeline", target: '[data-tour="pipeline"]', icon: Funnel, title: "Your sales pipeline", body: "Contacts in columns from New to Won, warmest first, with an engagement badge on each. Move a contact as the conversation moves; Won marks them as signed up and counts towards your results." },
+  { href: "/marketing/campaigns?new=whatsapp", target: '[data-tour="phone-preview"]', icon: DeviceMobile, title: "Write a campaign, see it on a phone", body: "Click New campaign, choose a Meta-approved template and the segment to send to. The phone shows the message exactly as each person gets it, with their name filled in; flip through contacts and check the cost before you send.", points: [[PaperPlaneTilt, "Send a test to your own phone first"], [ListChecks, "An owner approves before anything goes out"], [Clock, "Send now or schedule a date and time"]] },
+  { href: "/marketing/campaigns?new=whatsapp", target: '[data-tour="campaign-options"]', icon: Clock, title: "Smart sending does the timing", body: "Leave Best time on and each person gets the message at the hour they usually read WhatsApp. Add an A/B test to try two messages on a sample first: the winner goes to everyone else.", points: [[Clock, "Quiet hours, Sundays and public holidays skipped"], [Flask, "A/B test with an automatic winner"], [DeviceMobile, "Image, video or document header; reply buttons"]] },
+  { href: "/marketing/inbox", target: '[data-tour="inbox"]', icon: ChatsCircle, title: "Every reply in one inbox", body: "Replies arrive sorted as interested, price questions, call-backs, complaints or opt-outs. Answer with a saved reply, send their sign-up link, or assign the chat to a colleague. Replies within 24 hours of their message are free.", points: [[ChatsCircle, "Saved replies for common questions"], [UsersThree, "Assign chats to the team"], [Phone, "Call me back buttons become tasks"]] },
+  { href: "/marketing/automations", target: '[data-tour="keywords"]', icon: Robot, title: "Keyword auto-replies", body: "Choose a word such as PRICE or VAT and the answer to send. When someone messages just that word, they get the reply at once, day or night, and can be added to a segment for follow-up." },
+  { href: "/marketing/automations", target: '[data-tour="automations"]', icon: Repeat, title: "Follow-ups that run themselves", body: "Sequences follow up on their own, for example a second message three days later to people who read but didn't click. Compliance reminders send VAT201, EMP201 and CIPC deadlines to clients at the cheaper utility rate. Referral links track who brought whom." },
+  { href: "/marketing/automations", target: '[data-tour="opt-in"]', icon: QrCode, title: "Grow your list with permission", body: "Switch on your sign-up page and share its link or QR code on your website, email signature and at reception. People join themselves, their consent is recorded, and they land in Contacts ready for your next campaign." },
+  { href: "/marketing/analytics", target: '[data-tour="heatmap"]', icon: ChartLineUp, title: "The best day and hour to send", body: "A heatmap of when your clients read, click and sign up, learned from every campaign. Below it, compare campaigns, segments and regions, and see what each sign-up cost." },
+  { href: "/marketing/settings", target: '[data-tour="settings"]', icon: GearSix, title: "Connect WhatsApp and set the rules", body: "The owner connects the practice's WhatsApp Business number here, once. Set the monthly budget, quiet hours and opt-out limit, and use demo mode to try everything without sending.", points: [[WhatsappLogo, "Meta Cloud API directly: no monthly fee"], [Gauge, "Budget, daily limit and auto-pause"], [Flask, "Demo mode for training and pitches"]] },
+  // The rest of the Hub
+  { href: "/review", target: '[data-tour="review-queue"]', icon: Scan, title: "Only the exceptions reach you", body: "Invoices from the inbox are read and filed automatically. Anything the Hub isn't sure about waits here, with the original beside the extracted fields. Confirm it in one click." },
   { href: "/books", target: '[data-tour="books"]', icon: BookOpen, title: "Books that follow the work", body: "Client books, bank lines and financial statements in the same workspace as the documents behind them." },
   { href: "/", target: '[data-tour="search"]', icon: MagnifyingGlass, title: "Find anything with Ctrl K", body: "Clients, invoices, amounts, dates and phone numbers from one search box, across every year, while the client is still on the phone.", desktop: true },
   { splash: "finish" },
@@ -253,13 +264,14 @@ function Tour({ steps: all, start, demo, staff, onClose }: { steps: Step[]; star
           <span className="gt-logo"><img src="/brand/analiva-mark.png" alt="" /></span>
           <small className="gt-kicker">{demo ? "Demo practice · sample data" : "Welcome"}</small>
           <h1>{staff ? "The whole practice, in one place" : "Your accountant, in one place"}</h1>
-          <p>{staff ? "Inbox capture, client records, books and WhatsApp campaigns that reach every client, working from the same records." : "Your figures, documents and questions to your accountant, together."}</p>
+          <p>{staff ? "Inbox capture, client records, books and a full WhatsApp marketing CRM, working from the same records. About 5 minutes; use the arrow keys or Next." : "Your figures, documents and questions to your accountant, together."}</p>
           <div className="gt-pills">
             {pills.map(([P, l], k) => <span key={l} style={{ animationDelay: `${0.35 + k * 0.07}s` }}><P size={14} weight="bold" />{l}</span>)}
           </div>
           <div className="gt-cta">
-            <button type="button" className="gt-btn primary" onClick={next} autoFocus>Take the 2-minute tour <ArrowRight size={18} weight="bold" /></button>
-            <button type="button" className="gt-btn ghost" onClick={finish}>{demo ? "Explore on my own" : "Skip for now"}</button>
+            <button type="button" className="gt-btn primary" onClick={next} autoFocus>{staff ? "Take the full tour" : "Take the tour"} <ArrowRight size={18} weight="bold" /></button>
+            {staff ? <button type="button" className="gt-btn ghost" onClick={() => setI(steps.findIndex((s) => !s.splash && s.href.startsWith("/marketing")))}>Just WhatsApp marketing</button> : null}
+            <button type="button" className="gt-btn text" onClick={finish}>{demo ? "Explore on my own" : "Skip for now"}</button>
           </div>
         </div>
       </div>,
@@ -273,11 +285,11 @@ function Tour({ steps: all, start, demo, staff, onClose }: { steps: Step[]; star
         <div className="gt-welcome">
           <svg className="gt-done" viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="34" /><path d="M25 41l10 10 21-22" /></svg>
           <h1>That&apos;s the Hub</h1>
-          <p>{demo ? "Everything you saw runs on a sample practice. Click around freely: WhatsApp sending is simulated and nothing is sent for real." : "You can replay the tour any time from Help or Mission control."}</p>
+          <p>{demo ? "Everything you saw runs on a sample practice. Click around freely: WhatsApp sending is simulated and nothing is sent for real. Jump back to any step below." : "Jump back to any step below, or replay the tour any time from Help or Mission control."}</p>
           <div className="gt-pills">
             {real.map((s, k) => {
               const P = s.icon;
-              return <button type="button" key={s.title} style={{ animationDelay: `${0.2 + k * 0.05}s` }} onClick={() => setI(steps.indexOf(s))}><P size={14} weight="bold" />{s.title.replace(/ with Ctrl K|, front and centre/, "")}</button>;
+              return <button type="button" key={s.title} style={{ animationDelay: `${0.2 + k * 0.05}s` }} onClick={() => setI(steps.indexOf(s))}><P size={14} weight="bold" />{s.title.replace(/ with Ctrl K|, front and centre|, see it on a phone/, "")}</button>;
             })}
           </div>
           <div className="gt-cta">

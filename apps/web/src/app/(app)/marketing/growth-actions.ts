@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { normalizePhone, parseTags } from "@aah/core";
+import { normaliseKeyword, normalizePhone, parseTags } from "@aah/core";
 import { audit } from "@aah/db";
 import { blankToNull, fail, parseForm } from "@/lib/forms";
 import { clearDemo, logOutbound, seedDemo } from "@/lib/marketing/automation";
@@ -257,4 +257,83 @@ export async function toggleReminder(id: string) {
   const r = await db.reminderRule.findFirst({ where: { id } });
   if (r) await db.reminderRule.updateMany({ where: { id }, data: { active: !r.active } });
   revalidatePath("/marketing/automations");
+}
+
+// ---- Keyword auto-replies --------------------------------------------------------
+
+const keywordSchema = z.object({
+  keyword: z.string().trim().min(2, "A keyword needs at least 2 characters.").max(40).regex(/^#?[\p{L}\p{N} ]+$/u, "Use letters, numbers and spaces only."),
+  reply: z.string().trim().min(1).max(1000),
+  tag: z.preprocess(blankToNull, z.string().trim().max(60).nullable()),
+});
+
+export async function saveKeyword(form: FormData) {
+  const back = "/marketing/automations";
+  const { db, ctx, user } = await requireStaff();
+  const i = parseForm(keywordSchema, form, back);
+  const keyword = normaliseKeyword(i.keyword);
+  if (keyword === "STOP" || keyword === "START") fail(back, "STOP and START are kept for opting out and back in.");
+  const saved = await db.marketingKeyword.upsert({
+    where: { practiceId_keyword: { practiceId: ctx.practiceId, keyword } },
+    create: { practiceId: ctx.practiceId, keyword, reply: i.reply, tag: i.tag },
+    update: { reply: i.reply, tag: i.tag, active: true },
+  });
+  await audit(ctx, { action: "keyword.saved", entityType: "MarketingKeyword", entityId: saved.id, reason: `Keyword ${keyword}` }, user.name ?? undefined);
+  revalidatePath(back);
+  redirect(`${back}?saved=keyword`);
+}
+
+export async function toggleKeyword(id: string) {
+  const { db } = await requireStaff();
+  const k = await db.marketingKeyword.findFirst({ where: { id } });
+  if (k) await db.marketingKeyword.updateMany({ where: { id }, data: { active: !k.active } });
+  revalidatePath("/marketing/automations");
+}
+
+export async function deleteKeyword(id: string) {
+  const { db } = await requireStaff();
+  await db.marketingKeyword.deleteMany({ where: { id } });
+  revalidatePath("/marketing/automations");
+}
+
+// ---- Contact notes and pipeline ---------------------------------------------------
+
+export async function addLeadNote(leadId: string, form: FormData) {
+  const back = `/marketing/contacts?lead=${leadId}`;
+  const { db, ctx, user } = await requireStaff();
+  const { body } = parseForm(z.object({ body: z.string().trim().min(1).max(2000) }), form, back);
+  const lead = await db.marketingLead.findFirst({ where: { id: leadId }, select: { id: true } });
+  if (!lead) fail("/marketing/contacts", "Contact not found.");
+  await db.marketingNote.create({ data: { practiceId: ctx.practiceId, leadId, body, createdById: ctx.userId } });
+  await audit(ctx, { action: "lead.noted", entityType: "MarketingLead", entityId: leadId }, user.name ?? undefined);
+  revalidatePath("/marketing/contacts");
+  redirect(back);
+}
+
+const STAGES = ["NEW", "CONTACTED", "QUALIFIED", "WON", "CLOSED"] as const;
+
+export async function moveLeadStage(leadId: string, form: FormData) {
+  const { db, ctx, user } = await requireStaff();
+  const stage = z.enum(STAGES).safeParse(form.get("stage"));
+  if (!stage.success) fail("/marketing/pipeline", "Choose a stage.");
+  const lead = await db.marketingLead.findFirst({ where: { id: leadId }, select: { stage: true } });
+  if (!lead) fail("/marketing/pipeline", "Contact not found.");
+  if (lead.stage !== stage.data) {
+    await db.marketingLead.updateMany({ where: { id: leadId }, data: { stage: stage.data, ...(stage.data === "WON" ? { signedUpAt: new Date() } : {}) } });
+    await audit(ctx, { action: "lead.stage_changed", entityType: "MarketingLead", entityId: leadId, reason: `${lead.stage} → ${stage.data}` }, user.name ?? undefined);
+  }
+  revalidatePath("/marketing/pipeline");
+}
+
+// ---- Public opt-in page -------------------------------------------------------------
+
+export async function saveOptIn(form: FormData) {
+  const back = "/marketing/automations";
+  const { db, ctx, user } = await owner(back);
+  const i = parseForm(z.object({ optInEnabled: z.preprocess((v) => v === "on", z.boolean()), optInHeadline: z.preprocess(blankToNull, z.string().trim().max(160).nullable()) }), form, back);
+  await marketingSettings(db);
+  await db.marketingSettings.updateMany({ data: i });
+  await audit(ctx, { action: "practice.updated", entityType: "MarketingSettings", entityId: ctx.practiceId, reason: i.optInEnabled ? "Opt-in page switched on" : "Opt-in page switched off" }, user.name ?? undefined);
+  revalidatePath(back);
+  redirect(`${back}?saved=optin`);
 }
