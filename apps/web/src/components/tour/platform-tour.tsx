@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ArrowLeft, ArrowRight, BookOpen, Broadcast, ChartLineUp, ChatsCircle, Clock, Compass, DeviceMobile, Fire, Flask, Gauge, ListChecks,
-  Funnel, GearSix, MagnifyingGlass, PaperPlaneTilt, Phone, QrCode, Repeat, Robot, Scan, SquaresFour, Tray, UsersThree, WhatsappLogo, X, type Icon,
+  EnvelopeSimple, Funnel, GearSix, MagnifyingGlass, PaperPlaneTilt, Phone, QrCode, Repeat, Robot, Scan, SquaresFour, Tray, UsersThree, WhatsappLogo, X, type Icon,
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui";
 
@@ -41,9 +41,13 @@ const STAFF: Step[] = [
   { href: "/marketing/automations", target: '[data-tour="automations"]', icon: Repeat, title: "Follow-ups that run themselves", body: "Sequences follow up on their own, for example a second message three days later to people who read but didn't click. Compliance reminders send VAT201, EMP201 and CIPC deadlines to clients at the cheaper utility rate. Referral links track who brought whom." },
   { href: "/marketing/automations", target: '[data-tour="opt-in"]', icon: QrCode, title: "Grow your list with permission", body: "Switch on your sign-up page and share its link or QR code on your website, email signature and at reception. People join themselves, their consent is recorded, and they land in Contacts ready for your next campaign." },
   { href: "/marketing/analytics", target: '[data-tour="heatmap"]', icon: ChartLineUp, title: "The best day and hour to send", body: "A heatmap of when your clients read, click and sign up, learned from every campaign. Below it, compare campaigns, segments and regions, and see what each sign-up cost." },
-  { href: "/marketing/settings", target: '[data-tour="settings"]', icon: GearSix, title: "Connect WhatsApp and set the rules", body: "The owner connects the practice's WhatsApp Business number here, once. Set the monthly budget, quiet hours and opt-out limit, and use demo mode to try everything without sending.", points: [[WhatsappLogo, "Meta Cloud API directly: no monthly fee"], [Gauge, "Budget, daily limit and auto-pause"], [Flask, "Demo mode for training and pitches"]] },
+  { href: "/marketing/settings", target: '[data-tour="settings"]', icon: GearSix, title: "Connect WhatsApp and set the rules", body: "The owner connects the practice's WhatsApp Business number here, once (email accounts are connected under Settings, Email accounts). Set the monthly budget, quiet hours and opt-out limit, and use demo mode to try everything without sending.", points: [[WhatsappLogo, "Meta Cloud API directly: no monthly fee"], [Gauge, "Budget, daily limit and auto-pause"], [Flask, "Demo mode for training and pitches"]] },
+  // Email automation, working with WhatsApp
+  { href: "/marketing/contacts", target: '[data-tour="reach"]', icon: EnvelopeSimple, title: "One contact list, email and WhatsApp", body: "The same contacts power both channels. The Hub knows who you may email, who you may WhatsApp, and who opted out of each, because POPIA treats them separately. A campaign only ever reaches people who said yes on that channel.", points: [[EnvelopeSimple, "Email permission and WhatsApp permission kept apart"], [ListChecks, "Opt-outs on one channel never block the other"], [Repeat, "Reach one segment by email and WhatsApp, each with its own follow-ups"]] },
+  { href: "/marketing/campaigns?channel=EMAIL", target: '[data-tour="email-campaign"]', icon: PaperPlaneTilt, title: "Email campaigns from your own mailbox", body: "Email campaigns go out from the practice's own email address, so replies come back to you. The Hub sends them a few at a time (about eight a minute) to protect your mailbox's reputation, and costs nothing per email.", points: [[ChartLineUp, "Tracked links show who opened and clicked through"], [ListChecks, "A one-click unsubscribe on every email (POPIA)"], [UsersThree, "Same segments, approval and follow-ups as WhatsApp"]] },
+  { href: "/inbox", target: '[data-tour="email-inbox"]', icon: Tray, title: "Your mailbox, read for you", body: "Connect the practice's mailboxes under Settings, Email accounts. Every five minutes the Hub fetches new mail, works out what each email is (invoice, statement, CIPC, client question) and which client it belongs to, and files the attachments.", points: [[Scan, "Invoices captured without typing"], [UsersThree, "Emails matched to the right client"], [ChatsCircle, "Client questions become enquiries"]] },
+  { href: "/review", target: '[data-tour="review-queue"]', icon: Scan, title: "Only the exceptions reach you", body: "Invoices from the inbox are read and filed automatically. Anything the Hub isn't sure about waits here, with the original email attachment beside the extracted fields. Confirm it in one click.", points: [[EnvelopeSimple, "Invoice reminders and client messages sent from the Hub"], [UsersThree, "Send on a client's behalf, in their branding, once they've signed a mandate"], [Gauge, "A weekly results email every Monday"]] },
   // The rest of the Hub
-  { href: "/review", target: '[data-tour="review-queue"]', icon: Scan, title: "Only the exceptions reach you", body: "Invoices from the inbox are read and filed automatically. Anything the Hub isn't sure about waits here, with the original beside the extracted fields. Confirm it in one click." },
   { href: "/books", target: '[data-tour="books"]', icon: BookOpen, title: "Books that follow the work", body: "Client books, bank lines and financial statements in the same workspace as the documents behind them." },
   { href: "/", target: '[data-tour="search"]', icon: MagnifyingGlass, title: "Find anything with Ctrl K", body: "Clients, invoices, amounts, dates and phone numbers from one search box, across every year, while the client is still on the phone.", desktop: true },
   { splash: "finish" },
@@ -142,6 +146,16 @@ export function PlatformTour({ userId, staff, demo = false }: { userId: string; 
       setOpen(true);
     };
     window.addEventListener(OPEN_TOUR, openTour);
+    // The tour link (/tour) and the demo button land on ?tour=1: open at once, then tidy the address.
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("tour") === "1") {
+      url.searchParams.delete("tour");
+      window.history.replaceState(null, "", url.pathname + (url.search ? url.search : ""));
+      try { localStorage.setItem(storageKey, "seen"); } catch {}
+      setStart(0);
+      setOpen(true);
+      return () => window.removeEventListener(OPEN_TOUR, openTour);
+    }
     // Opens by itself once per person and browser (every demo visitor sees it on their first visit).
     const timer = window.setTimeout(() => {
       try {
@@ -254,7 +268,7 @@ function Tour({ steps: all, start, demo, staff, onClose }: { steps: Step[]; star
 
   if (step.splash === "welcome") {
     const pills: Array<[Icon, string]> = staff
-      ? [[WhatsappLogo, "WhatsApp marketing"], [Tray, "Inbox capture"], [Scan, "Review queue"], [UsersThree, "Clients"], [BookOpen, "Books"], [MagnifyingGlass, "Instant search"]]
+      ? [[WhatsappLogo, "WhatsApp marketing"], [EnvelopeSimple, "Email automation"], [Tray, "Inbox capture"], [Scan, "Review queue"], [UsersThree, "Clients"], [BookOpen, "Books"], [MagnifyingGlass, "Instant search"]]
       : [[Gauge, "Your figures"], [Tray, "Documents"], [ChatsCircle, "Enquiries"]];
     return createPortal(
       <div className="gt-splash" role="dialog" aria-modal="true" aria-label="Welcome to the Analiva Automation Hub">
@@ -263,8 +277,8 @@ function Tour({ steps: all, start, demo, staff, onClose }: { steps: Step[]; star
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <span className="gt-logo"><img src="/brand/analiva-mark.png" alt="" /></span>
           <small className="gt-kicker">{demo ? "Demo practice · sample data" : "Welcome"}</small>
-          <h1>{staff ? "The whole practice, in one place" : "Your accountant, in one place"}</h1>
-          <p>{staff ? "Inbox capture, client records, books and a full WhatsApp marketing CRM, working from the same records. About 5 minutes; use the arrow keys or Next." : "Your figures, documents and questions to your accountant, together."}</p>
+          <h1>{staff ? "WhatsApp and email, working for your practice" : "Your accountant, in one place"}</h1>
+          <p>{staff ? "Email automation and a full WhatsApp marketing CRM, working together on the same contacts, plus inbox capture, client records and books. About 6 minutes; use the arrow keys or Next." : "Your figures, documents and questions to your accountant, together."}</p>
           <div className="gt-pills">
             {pills.map(([P, l], k) => <span key={l} style={{ animationDelay: `${0.35 + k * 0.07}s` }}><P size={14} weight="bold" />{l}</span>)}
           </div>
@@ -289,7 +303,7 @@ function Tour({ steps: all, start, demo, staff, onClose }: { steps: Step[]; star
           <div className="gt-pills">
             {real.map((s, k) => {
               const P = s.icon;
-              return <button type="button" key={s.title} style={{ animationDelay: `${0.2 + k * 0.05}s` }} onClick={() => setI(steps.indexOf(s))}><P size={14} weight="bold" />{s.title.replace(/ with Ctrl K|, front and centre|, see it on a phone/, "")}</button>;
+              return <button type="button" key={s.title} style={{ animationDelay: `${0.2 + k * 0.05}s` }} onClick={() => setI(steps.indexOf(s))}><P size={14} weight="bold" />{s.title.replace(/ with Ctrl K|, front and centre|, see it on a phone|, email and WhatsApp| from your own mailbox/, "")}</button>;
             })}
           </div>
           <div className="gt-cta">

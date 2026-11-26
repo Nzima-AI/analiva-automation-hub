@@ -120,7 +120,7 @@ export default async function MarketingPage({ searchParams }: {
         </Notice>
       ) : null}
 
-      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div data-tour="reach" className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
         <StatCard label="Contacts" value={total} href="/marketing/contacts" />
         <StatCard label="Can email" value={canEmail} tone="brand" href={filterHref({ reach: "email", page: null })} />
         <StatCard label="Can WhatsApp" value={canWhatsapp} tone="brand" href={filterHref({ reach: "whatsapp", page: null })} />

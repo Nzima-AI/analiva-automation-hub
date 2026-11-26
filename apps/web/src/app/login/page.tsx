@@ -54,7 +54,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <div className="mt-8 border-t border-line pt-6">
           <form action="/auth/demo" method="post">
             <Button type="submit" variant="secondary" className="w-full">
-              <Sparkle className="h-4 w-4" weight="duotone" aria-hidden /> Explore the demo
+              <Sparkle className="h-4 w-4" weight="duotone" aria-hidden /> Take the demo tour
             </Button>
           </form>
           <p className="mt-2 text-center text-xs text-muted">Sample practice and data. Nothing you do sends real messages.</p>

@@ -213,7 +213,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
               </div>
             </Card>
           ) : (
-            <Card title={channel === "WHATSAPP" ? "New WhatsApp campaign" : "New email campaign"} description={channel === "WHATSAPP" ? "Meta bills per delivered message, with no monthly fee. You see the cost before you send." : "Email costs nothing to send."}>
+            <Card tour={channel === "EMAIL" ? "email-campaign" : undefined} title={channel === "WHATSAPP" ? "New WhatsApp campaign" : "New email campaign"} description={channel === "WHATSAPP" ? "Meta bills per delivered message, with no monthly fee. You see the cost before you send." : "Email costs nothing to send."}>
               {channel === "EMAIL" ? (
                 <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
                   <span className="text-muted">Start from:</span>

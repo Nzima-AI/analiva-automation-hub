@@ -24,7 +24,7 @@ export default async function InboxPage() {
   return (
     <div>
       <PageHeader title="Inbox" subtitle="Every email fetched from connected mailboxes, how it was classified, and who it was matched to." actions={<CheckInboxButton />} />
-      <Card>
+      <Card tour="email-inbox">
         {emails.length === 0 ? (
           <Empty>No emails fetched yet.</Empty>
         ) : (
