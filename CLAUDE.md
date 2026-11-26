@@ -59,6 +59,8 @@ Full design spec lives in the shared doc "Accounting Automation System – Desig
 | Hosting | Start simple (Vercel plus managed Postgres, or a single VPS); keep deployable with Docker |
 | Testing | Vitest, Playwright for end-to-end, fixtures for sample invoices |
 
+**Decided 2026-11-26:** "Explore the demo" on the sign-in page signs in as a shared STAFF login in the Demo Practice (slug `demo`, env `DEMO_LOGIN_EMAIL`, setup `apps/web/scripts/setup-demo-login.ts`). Only that account skips two-step login; the Demo Practice must never get a mail account or WhatsApp connection; its marketing data resets nightly.
+
 **Decided 2026-11-25 (ADR 0005):** WhatsApp is the focal feature: mission control, inbox, automations, analytics (best send times), budget and safety limits, demo mode and a spotlight tour.
 
 **Decided 2026-11-24 (ADR 0004):** marketing campaigns by email (practice mailbox, paced) and WhatsApp (Meta Cloud API directly, no reseller), with per-channel POPIA consent, tracked links, signed Meta webhooks and a minute cron `aah-marketing-send`.
