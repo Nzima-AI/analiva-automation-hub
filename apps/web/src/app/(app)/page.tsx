@@ -83,7 +83,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <InkPanel className="px-6 pb-6 pt-7 sm:px-9 sm:pb-8 sm:pt-9">
+      <InkPanel tour="dash-hero" className="px-6 pb-6 pt-7 sm:px-9 sm:pb-8 sm:pt-9">
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div className="min-w-0">
             <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#5fd3ff]"><span className="h-px w-6 bg-[#5fd3ff]/60" aria-hidden />{dateLine}</p>

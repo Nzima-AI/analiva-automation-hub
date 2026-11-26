@@ -73,6 +73,7 @@ export function Toggle({ name, defaultChecked, label, hint }: { name: string; de
 // ---------------------------------------------------------------- surfaces
 
 export function Card({
+  tour,
   title,
   description,
   icon: Icon,
@@ -88,10 +89,13 @@ export function Card({
   children: ReactNode;
   className?: string;
   padded?: boolean;
+  /** Target for the guided tour. */
+  tour?: string;
 }) {
   return (
     <section
       data-reveal
+      data-tour={tour}
       data-spotlight
       className={cx(
         "edge-light rounded-[1.25rem] border border-line bg-panel shadow-[0_1px_0_var(--hl)_inset,var(--shadow-sm)] transition-[border-color,box-shadow] duration-500 hover:border-line-strong hover:shadow-md",
@@ -301,9 +305,9 @@ export function Progress({ value, tone = "brand" }: { value: number; tone?: "bra
 }
 
 /** Ink surface: the product's signature dark panel (hero bands, key figures). */
-export function InkPanel({ children, className }: { children: ReactNode; className?: string }) {
+export function InkPanel({ children, className, tour }: { children: ReactNode; className?: string; tour?: string }) {
   return (
-    <section data-reveal className={cx("ink rounded-[1.75rem] border border-white/10 shadow-[0_40px_80px_-40px_rgb(4_17_27/0.7)]", className)}>
+    <section data-reveal data-tour={tour} className={cx("ink rounded-[1.75rem] border border-white/10 shadow-[0_40px_80px_-40px_rgb(4_17_27/0.7)]", className)}>
       {children}
     </section>
   );

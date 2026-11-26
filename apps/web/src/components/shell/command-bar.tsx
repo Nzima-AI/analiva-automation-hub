@@ -88,6 +88,7 @@ export function CommandBar() {
     <>
       <button
         onClick={() => setOpen(true)}
+        data-tour="search"
         className="no-print flex h-10 w-full max-w-md items-center gap-2.5 rounded-xl border border-line bg-panel px-3.5 text-sm text-faint shadow-xs transition-colors hover:border-line-strong hover:text-muted"
       >
         <MagnifyingGlass className="h-4 w-4" />

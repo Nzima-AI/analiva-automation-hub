@@ -80,7 +80,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="app-backdrop min-h-screen md:flex">
-      <PlatformTour key={user.id} userId={user.id} staff={staff} />
+      <PlatformTour key={user.id} userId={user.id} staff={staff} demo={practice.slug === "demo"} />
       <Sidebar sections={sections} user={{ name: user.name, role: humanise(user.role) }} practiceName={practice.name} showTier={staff} />
       <div className="min-w-0 flex-1">
         <div className="shell-toolbar no-print sticky top-0 z-20 hidden items-center justify-between gap-4 px-7 md:flex">

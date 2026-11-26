@@ -67,7 +67,7 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
           Recently filed or dismissed
         </Link>
       </div>
-      <Card>
+      <Card tour="review-queue">
         {items.length === 0 ? (
           <Empty>{showRecent ? "Nothing filed yet." : "Nothing waiting."}</Empty>
         ) : (

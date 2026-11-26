@@ -35,7 +35,7 @@ export async function WhatsAppHero({ db }: { db: TenantDb }) {
   );
 
   return (
-    <Link href="/marketing" data-reveal className="wa-band group p-5 sm:p-7">
+    <Link href="/marketing" data-reveal data-tour="wa-band" className="wa-band group p-5 sm:p-7">
       <div className="grid items-center gap-6 xl:grid-cols-[auto_minmax(0,1fr)_auto]">
         <div className="flex min-w-0 items-center gap-4">
           <span className="wa-icon"><WhatsappLogo size={26} weight="fill" aria-hidden /></span>

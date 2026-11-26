@@ -24,7 +24,7 @@ export default async function BooksIndexPage() {
         title="Books & reports"
         subtitle="Each client's double-entry ledger, built from captured invoices and imported bank statements. Statements, VAT201 and ratios are produced from it."
       />
-      <Card padded>
+      <Card padded tour="books">
         {clients.length === 0 ? (
           <Empty icon={Briefcase} action={<Link href="/clients/new" className="text-sm font-medium text-brand-text hover:underline">Add a client</Link>}>
             No clients yet.

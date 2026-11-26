@@ -1254,128 +1254,95 @@ body::after {
   .document-quick-preview:is(:hover, :focus-visible) .document-preview-paper { transform: none; }
 }
 
-.platform-tour {
-  position: fixed;
-  inset: 0;
-  width: min(780px, calc(100% - 28px));
-  max-width: none;
-  max-height: min(720px, calc(100dvh - 28px));
-  margin: auto;
-  overflow: auto;
-  border: 1px solid var(--line-strong);
-  border-radius: 21px;
-  background: var(--panel);
-  box-shadow: 0 32px 88px rgb(0 12 24 / .4);
-  color: var(--ink);
+/* ===========================================================================
+   Guided tour: welcome splash, a spotlight that glides between real features,
+   and a finish splash (same design as the Illu Projects suite tour).
+   =========================================================================== */
+.gt { position: fixed; inset: 0; z-index: 300; }
+.gt-dim { position: fixed; inset: 0; background: rgb(4 14 22 / 0.64); backdrop-filter: blur(2px); animation: gt-fade .3s ease both; }
+.gt-shade { position: fixed; background: rgb(4 14 22 / 0.66); pointer-events: auto; }
+.gt-spot { position: fixed; border-radius: 14px; pointer-events: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 85%, #fff), 0 0 0 6px color-mix(in srgb, var(--brand) 22%, transparent), 0 0 48px 8px color-mix(in srgb, var(--brand) 30%, transparent); }
+.gt-spot i { position: absolute; inset: -6px; border-radius: 18px; border: 2px solid color-mix(in srgb, var(--brand) 70%, transparent); animation: gt-ping 2.2s cubic-bezier(.16, 1, .3, 1) infinite; }
+@keyframes gt-ping { 0% { opacity: .9; transform: scale(1); } 70%, 100% { opacity: 0; transform: scale(1.04); } }
+@keyframes gt-fade { from { opacity: 0; } }
+.gt-card { position: fixed; z-index: 1; width: min(392px, calc(100vw - 32px)); padding: 18px 20px 16px; border-radius: 18px; opacity: 0; color: var(--ink);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--brand) 7%, var(--panel)), var(--panel) 42%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand) 22%, var(--line-strong)), 0 30px 70px -20px rgb(0 0 0 / .55), 0 10px 24px -10px rgb(0 0 0 / .35);
+  transition: top .5s cubic-bezier(.16, 1, .3, 1), left .5s cubic-bezier(.16, 1, .3, 1); }
+.gt-card.in { animation: gt-in .5s cubic-bezier(.16, 1, .3, 1) .12s both; }
+@keyframes gt-in { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: none; } }
+.gt-card.docked { top: 50%; left: 50%; translate: -50% -50%; }
+.gt-card header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.gt-card header small { flex: 1; font-size: 11px; font-weight: 650; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); }
+.gt-ic { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; color: #fff; background: linear-gradient(145deg, #36c9ff, var(--brand-strong));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), 0 8px 18px -8px color-mix(in srgb, var(--brand) 80%, transparent); }
+.gt-x { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; color: var(--muted); }
+.gt-x:hover { background: var(--subtle); color: var(--ink); }
+.gt-card h2 { font-size: 19px; font-weight: 650; line-height: 1.25; letter-spacing: -.025em; margin: 0 0 6px; }
+.gt-card p { font-size: 14px; line-height: 1.6; color: var(--muted); margin: 0; }
+.gt-card ul { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 7px; }
+.gt-card li { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 550; }
+.gt-card li span { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; color: var(--brand-text); background: var(--brand-soft); }
+.gt-progress { display: flex; gap: 4px; margin: 16px 0 14px; }
+.gt-progress i { flex: 1; height: 4px; border-radius: 2px; background: var(--subtle); transition: background .4s ease; }
+.gt-progress i.on { background: var(--brand); }
+.gt-card footer { display: flex; align-items: center; gap: 6px; }
+.gt-card footer .grow { flex: 1; }
+.gt-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 10px; font-size: 13.5px; font-weight: 600; cursor: pointer;
+  transition: background-color .2s ease, transform .15s ease, box-shadow .2s ease; }
+.gt-btn:active { transform: scale(.98); }
+.gt-btn.primary { color: #fff; background: linear-gradient(180deg, #0a7fb0, #005d88); box-shadow: inset 0 1px 0 rgb(255 255 255 / .25), 0 8px 20px -10px rgb(0 134 195 / .8); }
+.gt-btn.primary:hover { background: linear-gradient(180deg, #087399, #034d72); }
+.gt-btn.ghost { color: var(--ink); background: var(--panel); border: 1px solid var(--line-strong); }
+.gt-btn.ghost:hover { background: var(--subtle); }
+.gt-btn.icon { width: 36px; padding: 0; }
+.gt-btn.text { color: var(--muted); padding: 0 8px; }
+.gt-btn.text:hover { color: var(--ink); }
+@media (max-width: 640px) {
+  .gt-card, .gt-card.docked { top: auto !important; left: 12px !important; right: 12px; bottom: max(12px, env(safe-area-inset-bottom, 0px)); width: auto; translate: none; }
 }
-.platform-tour::backdrop {
-  background: rgb(3 17 29 / .68);
-  backdrop-filter: blur(6px);
-}
-.tour-frame { position: relative; }
-.tour-close { position: absolute; z-index: 1; top: 12px; right: 12px; background: var(--panel); }
-.tour-story {
-  display: grid;
-  grid-template-columns: 1.24fr 1fr;
-  min-height: 330px;
-}
-.tour-copy {
-  align-self: center;
-  padding: 43px 32px 35px;
-}
-.tour-step-caption {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--brand-text);
-  font-size: 12px;
-  font-weight: 650;
-}
-.tour-copy h2 {
-  margin: 12px 0;
-  font-size: clamp(2.45rem, 5vw, 4rem);
-  line-height: .98;
-}
-.tour-copy h2:focus { outline: none; }
-.tour-copy p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
-.tour-destination {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 17px;
-  color: var(--brand-text);
-  font-size: 13px;
-  font-weight: 650;
-}
-.tour-destination:hover { text-decoration: underline; }
-.tour-visual {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 22px;
-  padding: 45px 27px 25px;
-  isolation: isolate;
-  background: radial-gradient(ellipse at 15% 20%, #1c506b, transparent 74%), #0b2232;
-  color: #e4f3fa;
-}
-.tour-visual::before {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background-image: linear-gradient(#89d0ef20 1px, transparent 1px), linear-gradient(90deg, #89d0ef20 1px, transparent 1px);
-  background-size: 26px 26px;
-  mask-image: linear-gradient(140deg, #000, transparent 83%);
-  content: "";
-}
-.tour-feature-icon { color: #85ddff; }
-.tour-visual ul { display: grid; gap: 8px; }
-.tour-visual li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px;
-  border: 1px solid #99dcf83b;
-  border-radius: 8px;
-  background: #a3dff215;
-  font-size: 12px;
-  line-height: 1.4;
-}
-.tour-visual li svg { flex: none; color: #85ddff; }
-.tour-controls {
-  position: sticky;
-  bottom: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 20px;
-  border-top: 1px solid var(--line);
-  background: var(--panel);
-}
-.tour-progress { min-width: 82px; color: var(--muted); font-size: 11px; font-weight: 600; }
-.tour-progress-track { display: flex; gap: 3px; margin-top: 6px; }
-.tour-progress-track span { flex: 1; height: 3px; border-radius: 4px; background: var(--line-strong); }
-.tour-progress-track span[data-active="true"] { background: var(--brand-text); }
-.tour-navigation { display: flex; align-items: center; gap: 7px; }
-.tour-skip { padding: 6px; color: var(--muted); font-size: 12px; }
-.tour-skip:hover { color: var(--ink); text-decoration: underline; }
 
-@media (prefers-reduced-motion: no-preference) {
-  .platform-tour[open] { animation: tour-enter 280ms cubic-bezier(.22, 1, .36, 1) both; }
-  .platform-tour[open] .tour-story { animation: tour-enter 250ms ease-out both; }
-  @keyframes tour-enter { from { opacity: .65; transform: translateY(7px); } }
-}
-@media (max-width: 620px) {
-  .tour-story { grid-template-columns: 1fr; }
-  .tour-copy { padding: 30px 18px 19px; }
-  .tour-step-caption { padding-right: 39px; }
-  .tour-visual { gap: 12px; padding: 15px 18px; }
-  .tour-feature-icon { display: none; }
-  .tour-visual li { padding: 6px 8px; }
-  .tour-controls { padding: 10px 12px; }
-  .tour-navigation { margin-left: auto; }
+/* welcome and finish */
+.gt-splash { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 24px; overflow: hidden; color: #eef6fb;
+  background: radial-gradient(1100px 680px at 50% -12%, rgb(30 192 255 / .3), transparent 62%), radial-gradient(800px 500px at 90% 110%, rgb(45 212 191 / .12), transparent 60%), #040e16;
+  animation: gt-fade .4s ease both; }
+.gt-orb { position: absolute; border-radius: 50%; filter: blur(70px); opacity: .55; pointer-events: none; }
+.gt-orb.a { width: 520px; height: 520px; left: -120px; top: -140px; background: #0f6e9c; animation: gt-orb-a 14s ease-in-out infinite alternate; }
+.gt-orb.b { width: 420px; height: 420px; right: -120px; bottom: -120px; background: #1ec0ff; opacity: .32; animation: gt-orb-b 16s ease-in-out infinite alternate; }
+.gt-orb.c { width: 300px; height: 300px; left: 55%; top: 55%; background: #25d366; opacity: .14; animation: gt-orb-a 18s ease-in-out infinite alternate-reverse; }
+@keyframes gt-orb-a { to { transform: translate(120px, 80px) scale(1.15); } }
+@keyframes gt-orb-b { to { transform: translate(-90px, -70px) scale(1.1); } }
+.gt-welcome { position: relative; display: grid; justify-items: center; gap: 16px; max-width: 680px; text-align: center; }
+.gt-welcome > * { animation: gt-rise .7s cubic-bezier(.16, 1, .3, 1) both; }
+.gt-welcome > :nth-child(2) { animation-delay: .08s; } .gt-welcome > :nth-child(3) { animation-delay: .16s; } .gt-welcome > :nth-child(4) { animation-delay: .24s; }
+@keyframes gt-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+.gt-logo { display: grid; place-items: center; width: 78px; height: 78px; border-radius: 24px; background: linear-gradient(150deg, #0e2a3b, #061520);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / .1), 0 0 60px 4px rgb(30 192 255 / .35); animation: gt-pop .8s cubic-bezier(.16, 1, .3, 1) both !important; }
+.gt-logo img { width: 46px; height: auto; }
+@keyframes gt-pop { from { opacity: 0; transform: scale(.6) rotate(-8deg); } to { opacity: 1; transform: none; } }
+.gt-kicker { padding: 5px 12px; border-radius: 999px; font-size: 11.5px; font-weight: 650; letter-spacing: .1em; text-transform: uppercase; color: #8fe0ff; background: rgb(30 192 255 / .14); box-shadow: inset 0 0 0 1px rgb(30 192 255 / .3); }
+.gt-welcome h1 { margin: 0; font: 400 clamp(38px, 6vw, 64px)/1.02 "Instrument Serif", Georgia, serif; letter-spacing: -.02em; color: #fff; text-wrap: balance; }
+.gt-welcome p { max-width: 54ch; margin: 0; font-size: 16px; line-height: 1.6; color: rgb(238 246 251 / .72); }
+.gt-pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 4px; animation: none !important; }
+.gt-pills > * { display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px; border-radius: 999px; font-size: 13px; font-weight: 550; color: #e6f2f9;
+  background: rgb(255 255 255 / .06); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1); backdrop-filter: blur(8px); animation: gt-rise .6s cubic-bezier(.16, 1, .3, 1) both; }
+.gt-pills > * svg { color: #5fd3ff; }
+.gt-pills button { cursor: pointer; }
+.gt-pills button:hover { background: rgb(255 255 255 / .12); }
+.gt-cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 10px; animation-delay: .5s !important; }
+.gt-cta .gt-btn { height: 46px; padding: 0 22px; font-size: 15px; }
+.gt-cta .gt-btn.primary { box-shadow: 0 12px 30px -10px rgb(30 192 255 / .7); }
+.gt-splash .gt-btn.ghost { color: #e6f2f9; background: rgb(255 255 255 / .06); border-color: rgb(255 255 255 / .14); }
+.gt-splash .gt-btn.ghost:hover { background: rgb(255 255 255 / .12); border-color: rgb(255 255 255 / .24); }
+.gt-done { width: 84px; height: 84px; }
+.gt-done circle { fill: none; stroke: #34d399; stroke-width: 4; stroke-dasharray: 214; stroke-dashoffset: 214; animation: gt-draw 1s cubic-bezier(.16, 1, .3, 1) .1s forwards; }
+.gt-done path { fill: none; stroke: #34d399; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 60; stroke-dashoffset: 60; animation: gt-draw .5s cubic-bezier(.16, 1, .3, 1) .9s forwards; }
+@keyframes gt-draw { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .gt-orb, .gt-spot i { animation: none; }
+  .gt-card { transition: none; }
+  .gt-welcome > *, .gt-pills > *, .gt-card.in { animation-duration: .01s !important; animation-delay: 0s !important; }
 }
 
 /* ===========================================================================

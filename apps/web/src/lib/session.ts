@@ -15,7 +15,7 @@ export function isDemoVisitor(email: string, practiceSlug: string, role: string)
 export interface Session {
   ctx: TenantContext;
   user: { id: string; name: string; email: string; role: TenantContext["role"] };
-  practice: { id: string; name: string };
+  practice: { id: string; name: string; slug: string };
   db: ReturnType<typeof tenantDb>;
 }
 
@@ -59,7 +59,7 @@ export const loadSession = cache(async (): Promise<SessionResult> => {
     session: {
       ctx,
       user: { id: profile.id, name: profile.name, email: profile.email, role: profile.role },
-      practice: { id: profile.practice.id, name: profile.practice.name },
+      practice: profile.practice,
       db: tenantDb(ctx),
     },
   };

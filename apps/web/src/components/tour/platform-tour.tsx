@@ -1,119 +1,327 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowLeft, ArrowRight, ArrowUpRight, ChartBar, Check, Compass, FunnelSimple, PaperPlaneTilt, Scan, Sparkle, Tray, X } from "@phosphor-icons/react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  ArrowLeft, ArrowRight, BookOpen, Broadcast, ChartLineUp, ChatsCircle, Clock, Compass, DeviceMobile, Fire, Flask, Gauge, ListChecks,
+  MagnifyingGlass, PaperPlaneTilt, Phone, Robot, Scan, SquaresFour, Tray, UsersThree, WhatsappLogo, X, type Icon,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui";
-import { clientTour, staffTour } from "./tour-content";
+
+/*
+ * The guided tour: a spotlight that glides between real features of the Hub, with a short story for
+ * each. It moves through the app itself, so the person watching sees the actual screens, not pictures.
+ * Same design as the Illu Projects suite tour (welcome splash, gliding spotlight, finish splash).
+ */
 
 const OPEN_TOUR = "analiva-open-platform-tour";
-const icons = { inbox: Tray, review: Scan, crm: FunnelSimple, report: ChartBar, ready: PaperPlaneTilt, growth: Sparkle };
 
-export function TourLauncher() {
+type Step =
+  | { splash: "welcome" | "finish" }
+  | { href: string; target: string; icon: Icon; title: string; body: string; points?: Array<[Icon, string]>; desktop?: boolean; splash?: undefined };
+
+const STAFF: Step[] = [
+  { splash: "welcome" },
+  { href: "/", target: '[data-tour="dash-hero"]', icon: Gauge, title: "Your practice at a glance", body: "What's waiting for review, what was captured this month and how much filed itself without a person. Every figure opens the work behind it." },
+  { href: "/", target: ".desktop-sidebar", icon: SquaresFour, title: "One workspace for the whole practice", body: "Inbox, review, clients, books, deadlines and WhatsApp marketing work from the same records. Badges show what needs action in each area.", desktop: true },
+  { href: "/", target: '[data-tour="wa-band"]', icon: WhatsappLogo, title: "WhatsApp, front and centre", body: "Today's sends, read rate, replies waiting and sign-ups, straight on the dashboard. One click opens mission control." },
+  { href: "/marketing", target: '[data-tour="kpis"]', icon: Broadcast, title: "Mission control", body: "Every campaign, reply and sign-up as it happens, with WhatsApp spend against your monthly budget.", points: [[PaperPlaneTilt, "Sent, read and replied, live"], [Fire, "Sign-ups this week"], [Gauge, "Spend against budget"]] },
+  { href: "/marketing", target: '[data-tour="hot-leads"]', icon: Phone, title: "Who to phone today", body: "The warmest contacts who haven't signed up yet, scored from how they read, click and reply, with the hour they usually read WhatsApp." },
+  { href: "/marketing/campaigns?new=whatsapp", target: '[data-tour="phone-preview"]', icon: DeviceMobile, title: "See it on a phone before it goes", body: "The message exactly as each contact will get it, with their name filled in. Flip through contacts, check the cost estimate, then send.", points: [[Clock, "Sent at each person's best time"], [Flask, "A/B test two messages"], [ListChecks, "Quiet hours, Sundays and holidays skipped"]] },
+  { href: "/marketing/analytics", target: '[data-tour="heatmap"]', icon: ChartLineUp, title: "The best day and hour to send", body: "A heatmap of when your clients read, click and sign up, learned from every campaign. The next campaign goes out when it will land." },
+  { href: "/marketing/inbox", target: '[data-tour="inbox"]', icon: ChatsCircle, title: "Every reply in one inbox", body: "Replies are tagged as interested, price questions, call-backs, complaints or opt-outs. Answer, assign or send the sign-up link in one click." },
+  { href: "/marketing/automations", target: '[data-tour="automations"]', icon: Robot, title: "Follow-ups that run themselves", body: "Sequences for people who read but didn't click, filing reminders before each deadline, and referral links that track who brought whom." },
+  { href: "/review", target: '[data-tour="review-queue"]', icon: Scan, title: "Only the exceptions reach you", body: "Invoices from the inbox are read and filed automatically. Anything the Hub isn't sure about waits here, with the original beside the extracted fields." },
+  { href: "/books", target: '[data-tour="books"]', icon: BookOpen, title: "Books that follow the work", body: "Client books, bank lines and financial statements in the same workspace as the documents behind them." },
+  { href: "/", target: '[data-tour="search"]', icon: MagnifyingGlass, title: "Find anything with Ctrl K", body: "Clients, invoices, amounts, dates and phone numbers from one search box, across every year, while the client is still on the phone.", desktop: true },
+  { splash: "finish" },
+];
+
+const CLIENT: Step[] = [
+  { splash: "welcome" },
+  { href: "/portal", target: "main [data-reveal]", icon: Gauge, title: "Your business at a glance", body: "The figures your accountant shares with you, kept up to date." },
+  { href: "/portal/documents", target: "main [data-reveal]", icon: Tray, title: "Send the right file", body: "Upload a requested statement, invoice or receipt, and find the documents your practice shares with you." },
+  { href: "/portal/enquiries", target: "main [data-reveal]", icon: ChatsCircle, title: "Questions in one place", body: "Ask your accountant a question and follow the reply in the same thread." },
+  { splash: "finish" },
+];
+
+const PAD = 10;
+const isPhone = () => window.matchMedia("(max-width: 640px)").matches;
+// Where the sticky top bar ends: nothing is spotlit under it.
+const headerBottom = () => Math.max(0, ...[...document.querySelectorAll(".shell-toolbar")].map((e) => e.getBoundingClientRect().bottom));
+const isTall = (r: DOMRect) => r.height > window.innerHeight * 0.55;
+type Rect = { top: number; left: number; width: number; height: number };
+
+function measure(sel: string): Rect | null {
+  const el = document.querySelector(sel);
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  if (!r.width || !r.height) return null;
+  const vh = window.innerHeight;
+  const inHeader = !!el.closest(".shell-toolbar");
+  const fixed = getComputedStyle(el).position === "sticky" || el.classList.contains("desktop-sidebar");
+  const top = inHeader || fixed ? Math.max(4, r.top - PAD) : Math.max(headerBottom() + 6, r.top - PAD);
+  let bottom = Math.min(vh - 8, r.bottom + PAD);
+  // No room for the card above or below: shorten the spotlight to make room underneath.
+  const need = 380;
+  if (!inHeader && !fixed && !isPhone() && vh - bottom < need && top - headerBottom() < need) bottom = Math.max(top + 120, vh - need - 12);
+  return { top, left: Math.max(8, r.left - PAD), width: Math.min(window.innerWidth - 16, r.width + PAD * 2), height: Math.max(40, bottom - top) };
+}
+
+function place(rect: Rect | null, card?: DOMRect) {
+  const vw = window.innerWidth, vh = window.innerHeight, w = card?.width || 392, h = card?.height || 270, gap = 16;
+  if (!rect || isPhone()) return null;
+  const clampX = (x: number) => Math.min(vw - w - 16, Math.max(16, x));
+  const clampY = (y: number) => Math.min(vh - h - 16, Math.max(16, y));
+  if (vh - (rect.top + rect.height) > h + gap + 16) return { top: rect.top + rect.height + gap, left: clampX(rect.left) };
+  if (rect.top > h + gap + 16) return { top: rect.top - h - gap, left: clampX(rect.left) };
+  if (vw - (rect.left + rect.width) > w + gap + 16) return { top: clampY(rect.top), left: rect.left + rect.width + gap };
+  if (rect.left > w + gap + 16) return { top: clampY(rect.top), left: rect.left - w - gap };
+  return { top: clampY(vh - h - 24), left: clampX(vw - w - 24) };
+}
+
+// Glides the spotlight toward its target over ~460 ms (ease-out), frame by frame, in every browser.
+function useGlide(target: Rect | null) {
+  const [cur, setCur] = useState<Rect | null>(target);
+  const from = useRef<Rect | null>(target);
+  useEffect(() => {
+    if (!target) {
+      setCur(null);
+      from.current = null;
+      return undefined;
+    }
+    const start = from.current ?? target;
+    const t0 = performance.now();
+    const dur = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 1 : 460;
+    let raf = 0;
+    const tick = (now: number) => {
+      const k = Math.min(1, (now - t0) / dur), e = 1 - (1 - k) ** 3;
+      const r = { top: start.top + (target.top - start.top) * e, left: start.left + (target.left - start.left) * e, width: start.width + (target.width - start.width) * e, height: start.height + (target.height - start.height) * e };
+      from.current = r;
+      setCur(r);
+      if (k < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target?.top, target?.left, target?.width, target?.height]); // eslint-disable-line react-hooks/exhaustive-deps
+  return cur;
+}
+
+/** Help and Mission control open the tour with this. */
+export function TourLauncher({ label = "Take the tour", from }: { label?: string; from?: string }) {
   return (
-    <Button type="button" variant="secondary" size="sm" onClick={() => window.dispatchEvent(new Event(OPEN_TOUR))}>
-      <Compass size={16} weight="duotone" aria-hidden /> Platform tour
+    <Button type="button" variant="secondary" size="sm" onClick={() => window.dispatchEvent(new CustomEvent(OPEN_TOUR, { detail: from }))}>
+      <Compass size={16} weight="duotone" aria-hidden /> {label}
     </Button>
   );
 }
 
-export function PlatformTour({ userId, staff }: { userId: string; staff: boolean }) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  const heading = useRef<HTMLHeadingElement>(null);
-  const returnFocus = useRef<HTMLElement | null>(null);
-  const dismissed = useRef(false);
-  const [stepIndex, setStepIndex] = useState(0);
-  const steps = staff ? staffTour : clientTour;
-  const step = steps[stepIndex]!;
-  const Graphic = icons[step.icon];
-  const last = stepIndex === steps.length - 1;
-  const storageKey = `analiva-platform-tour-v1:${userId}:${staff ? "staff" : "client"}`;
+export function PlatformTour({ userId, staff, demo = false }: { userId: string; staff: boolean; demo?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [start, setStart] = useState(0);
+  const storageKey = `analiva-tour-v2:${userId}:${staff ? "staff" : "client"}`;
+  const all = staff ? STAFF : CLIENT;
 
   useEffect(() => {
-    const element = dialog.current;
-    if (!element) return;
-    function open() {
-      if (!element || element.open) return;
-      returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-      setStepIndex(0);
-      element.showModal();
-      heading.current?.focus();
-    }
-    window.addEventListener(OPEN_TOUR, open);
+    const openTour = (e: Event) => {
+      const from = (e as CustomEvent<string | undefined>).detail;
+      const at = from ? all.findIndex((s) => !s.splash && s.href.startsWith(from)) : 0;
+      setStart(at > 0 ? at : 0);
+      setOpen(true);
+    };
+    window.addEventListener(OPEN_TOUR, openTour);
+    // Opens by itself once per person and browser (every demo visitor sees it on their first visit).
     const timer = window.setTimeout(() => {
-      if (dismissed.current) return;
       try {
         if (localStorage.getItem(storageKey)) return;
-      } catch {}
-      open();
-    }, 1000);
+        localStorage.setItem(storageKey, "seen");
+      } catch {
+        return;
+      }
+      setStart(0);
+      setOpen(true);
+    }, 900);
     return () => {
       window.clearTimeout(timer);
-      window.removeEventListener(OPEN_TOUR, open);
+      window.removeEventListener(OPEN_TOUR, openTour);
     };
-  }, [storageKey]);
+  }, [storageKey, all]);
 
+  if (!open) return null;
+  return <Tour key={start} steps={all} start={start} demo={demo} staff={staff} onClose={() => setOpen(false)} />;
+}
+
+function Tour({ steps: all, start, demo, staff, onClose }: { steps: Step[]; start: number; demo: boolean; staff: boolean; onClose: () => void }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [phone] = useState(isPhone);
+  const steps = all.filter((s) => s.splash || !(s.desktop && phone));
+  const [i, setI] = useState(() => Math.max(0, steps.indexOf(all[start]!)));
+  const [rect, setRect] = useState<Rect | null>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [ready, setReady] = useState(false);
+  const card = useRef<HTMLDivElement>(null);
+  const spot = useGlide(rect);
+  const step = steps[i]!;
+  const real = steps.filter((s): s is Extract<Step, { href: string }> => !s.splash);
+  const n = step.splash ? 0 : real.indexOf(step) + 1;
+  const path = useRef(pathname);
+  path.current = pathname;
+
+  // Go to the step's page, wait for its target to render, then glide the spotlight to it.
   useEffect(() => {
-    if (dialog.current?.open) heading.current?.focus();
-  }, [stepIndex]);
+    let alive = true, tries = 0;
+    setReady(false);
+    setRect(null);
+    if (step.splash) {
+      setReady(true);
+      return undefined;
+    }
+    const want = step.href.split("?")[0]!;
+    if (path.current !== want || step.href.includes("?")) router.push(step.href);
+    const find = () => {
+      if (!alive) return;
+      const el = path.current === want ? document.querySelector(step.target) : null;
+      if (el && el.getBoundingClientRect().height) {
+        (el as HTMLElement).style.scrollMarginTop = `${headerBottom() + 20}px`;
+        if (!el.classList.contains("desktop-sidebar")) el.scrollIntoView({ block: isTall(el.getBoundingClientRect()) ? "start" : "center", behavior: "smooth" });
+        setTimeout(() => {
+          if (alive) {
+            setRect(measure(step.target));
+            setReady(true);
+          }
+        }, 450);
+      } else if (++tries < 80) setTimeout(find, 100);
+      else {
+        // Not on screen for this person: show the card on its own.
+        setRect(null);
+        setReady(true);
+      }
+    };
+    setTimeout(find, 160);
+    return () => {
+      alive = false;
+    };
+  }, [i]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function remember() {
-    dismissed.current = true;
-    try { localStorage.setItem(storageKey, "seen"); } catch {}
-  }
+  // Keep the spotlight on its target as the page scrolls or resizes.
+  useEffect(() => {
+    if (step.splash) return undefined;
+    let raf = 0;
+    const upd = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => setRect(measure(step.target)));
+    };
+    window.addEventListener("resize", upd);
+    window.addEventListener("scroll", upd, true);
+    return () => {
+      window.removeEventListener("resize", upd);
+      window.removeEventListener("scroll", upd, true);
+      cancelAnimationFrame(raf);
+    };
+  }, [i]); // eslint-disable-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
+    setPos(place(rect, card.current?.getBoundingClientRect()));
+  }, [rect, ready]);
 
-  function close() {
-    remember();
-    dialog.current?.close();
-  }
+  const next = useCallback(() => setI((x) => Math.min(steps.length - 1, x + 1)), [steps.length]);
+  const back = useCallback(() => setI((x) => Math.max(0, x - 1)), []);
+  const finish = useCallback(() => onClose(), [onClose]);
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => {
+      if (e.key === "Escape") finish();
+      else if (e.key === "ArrowRight" || e.key === "Enter") {
+        e.preventDefault();
+        if (step.splash === "finish") finish();
+        else next();
+      } else if (e.key === "ArrowLeft") back();
+    };
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+  }, [next, back, finish, step]);
 
-  return (
-    <dialog
-      ref={dialog}
-      className="platform-tour no-print"
-      aria-labelledby="platform-tour-heading"
-      onCancel={remember}
-      onClose={() => {
-        remember();
-        returnFocus.current?.focus();
-      }}
-    >
-      <div className="tour-frame">
-        <button type="button" className="tour-close shell-icon" aria-label="Close tour" onClick={close}>
-          <X size={20} aria-hidden />
-        </button>
-        <div className="tour-story" key={stepIndex}>
-          <div className="tour-copy">
-            <div className="tour-step-caption"><Compass size={16} weight="duotone" aria-hidden /> {step.area}</div>
-            <h2 ref={heading} tabIndex={-1} id="platform-tour-heading" className="editorial-heading">{step.title}</h2>
-            <p>{step.description}</p>
-            <Link className="tour-destination" href={step.href} onClick={close}>
-              {step.action} <ArrowUpRight size={15} aria-hidden />
-            </Link>
+  if (step.splash === "welcome") {
+    const pills: Array<[Icon, string]> = staff
+      ? [[WhatsappLogo, "WhatsApp marketing"], [Tray, "Inbox capture"], [Scan, "Review queue"], [UsersThree, "Clients"], [BookOpen, "Books"], [MagnifyingGlass, "Instant search"]]
+      : [[Gauge, "Your figures"], [Tray, "Documents"], [ChatsCircle, "Enquiries"]];
+    return createPortal(
+      <div className="gt-splash" role="dialog" aria-modal="true" aria-label="Welcome to the Analiva Automation Hub">
+        <i className="gt-orb a" /><i className="gt-orb b" /><i className="gt-orb c" />
+        <div className="gt-welcome">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <span className="gt-logo"><img src="/brand/analiva-mark.png" alt="" /></span>
+          <small className="gt-kicker">{demo ? "Demo practice · sample data" : "Welcome"}</small>
+          <h1>{staff ? "The whole practice, in one place" : "Your accountant, in one place"}</h1>
+          <p>{staff ? "Inbox capture, client records, books and WhatsApp campaigns that reach every client, working from the same records." : "Your figures, documents and questions to your accountant, together."}</p>
+          <div className="gt-pills">
+            {pills.map(([P, l], k) => <span key={l} style={{ animationDelay: `${0.35 + k * 0.07}s` }}><P size={14} weight="bold" />{l}</span>)}
           </div>
-          <div className="tour-visual">
-            <Graphic size={47} weight="duotone" className="tour-feature-icon" aria-hidden />
-            <ul>
-              {step.proof.map((item) => <li key={item}><Check size={15} aria-hidden /> {item}</li>)}
-            </ul>
+          <div className="gt-cta">
+            <button type="button" className="gt-btn primary" onClick={next} autoFocus>Take the 2-minute tour <ArrowRight size={18} weight="bold" /></button>
+            <button type="button" className="gt-btn ghost" onClick={finish}>{demo ? "Explore on my own" : "Skip for now"}</button>
           </div>
         </div>
-        <div className="tour-controls">
-          <div className="tour-progress">
-            <span>Step {stepIndex + 1} of {steps.length}</span>
-            <div className="tour-progress-track" aria-hidden>
-              {steps.map((item, index) => <span key={item.area} data-active={index <= stepIndex} />)}
-            </div>
+      </div>,
+      document.body,
+    );
+  }
+  if (step.splash === "finish") {
+    return createPortal(
+      <div className="gt-splash" role="dialog" aria-modal="true" aria-label="Tour complete">
+        <i className="gt-orb a" /><i className="gt-orb b" />
+        <div className="gt-welcome">
+          <svg className="gt-done" viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="34" /><path d="M25 41l10 10 21-22" /></svg>
+          <h1>That&apos;s the Hub</h1>
+          <p>{demo ? "Everything you saw runs on a sample practice. Click around freely: WhatsApp sending is simulated and nothing is sent for real." : "You can replay the tour any time from Help or Mission control."}</p>
+          <div className="gt-pills">
+            {real.map((s, k) => {
+              const P = s.icon;
+              return <button type="button" key={s.title} style={{ animationDelay: `${0.2 + k * 0.05}s` }} onClick={() => setI(steps.indexOf(s))}><P size={14} weight="bold" />{s.title.replace(/ with Ctrl K|, front and centre/, "")}</button>;
+            })}
           </div>
-          <div className="tour-navigation">
-            <button type="button" className="tour-skip" onClick={close}>Skip tour</button>
-            {stepIndex > 0 ? <Button type="button" size="sm" variant="secondary" onClick={() => setStepIndex(stepIndex - 1)}><ArrowLeft size={15} aria-hidden /> Back</Button> : null}
-            <Button type="button" size="sm" onClick={last ? close : () => setStepIndex(stepIndex + 1)}>
-              {last ? "Finish tour" : "Next"} <ArrowRight size={15} aria-hidden />
-            </Button>
+          <div className="gt-cta">
+            <button type="button" className="gt-btn primary" onClick={finish} autoFocus>Start exploring <ArrowRight size={18} weight="bold" /></button>
+            <button type="button" className="gt-btn ghost" onClick={() => setI(1)}>Replay</button>
           </div>
         </div>
+      </div>,
+      document.body,
+    );
+  }
+
+  const page = step as Extract<Step, { href: string }>;
+  const I = page.icon;
+  return createPortal(
+    <div className="gt" role="dialog" aria-modal="true" aria-label={page.title}>
+      {spot ? (
+        <>
+          {/* Four dark panels frame the spotlight: plain boxes, so Safari draws them the same as Chrome. */}
+          <div className="gt-shade" style={{ top: 0, left: 0, right: 0, height: spot.top }} />
+          <div className="gt-shade" style={{ top: spot.top + spot.height, left: 0, right: 0, bottom: 0 }} />
+          <div className="gt-shade" style={{ top: spot.top, left: 0, width: spot.left, height: spot.height }} />
+          <div className="gt-shade" style={{ top: spot.top, left: spot.left + spot.width, right: 0, height: spot.height }} />
+          <div className="gt-spot" style={{ top: spot.top, left: spot.left, width: spot.width, height: spot.height }}><i /></div>
+        </>
+      ) : <div className="gt-dim" />}
+      <div ref={card} key={i} className={`gt-card${ready ? " in" : ""}${pos ? "" : " docked"}`} style={pos ? { top: pos.top, left: pos.left } : undefined}>
+        <header>
+          <span className="gt-ic"><I size={18} weight="bold" /></span>
+          <small>{n} of {real.length}</small>
+          <button type="button" className="gt-x" onClick={finish} aria-label="End the tour"><X size={16} /></button>
+        </header>
+        <h2>{page.title}</h2>
+        <p>{page.body}</p>
+        {page.points ? <ul>{page.points.map(([P, t]) => <li key={t}><span><P size={13} weight="bold" /></span>{t}</li>)}</ul> : null}
+        <div className="gt-progress" aria-hidden="true">{real.map((s, k) => <i key={s.title} className={k < n ? "on" : ""} />)}</div>
+        <footer>
+          <button type="button" className="gt-btn text" onClick={finish}>Skip tour</button>
+          <span className="grow" />
+          <button type="button" className="gt-btn ghost icon" onClick={back} aria-label="Previous"><ArrowLeft size={16} weight="bold" /></button>
+          <button type="button" className="gt-btn primary" onClick={next}>{n === real.length ? "Finish" : "Next"} <ArrowRight size={16} weight="bold" /></button>
+        </footer>
       </div>
-    </dialog>
+    </div>,
+    document.body,
   );
 }

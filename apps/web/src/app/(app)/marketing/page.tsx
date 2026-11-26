@@ -3,7 +3,7 @@ import { ArrowRight, Broadcast, ChatCircleDots, Lightning, PaperPlaneTilt, Phone
 import { DAY_NAMES, randFromCents } from "@aah/core";
 import { Funnel } from "@/components/marketing/funnel";
 import { LiveRefresh } from "@/components/marketing/live-refresh";
-import { WhatsAppTourButton } from "@/components/tour/whatsapp-tour";
+import { TourLauncher } from "@/components/tour/platform-tour";
 import { Badge, Button, ButtonLink, Card, Notice, PageHeader, StatCard } from "@/components/ui";
 import { overviewData } from "@/lib/marketing/analytics";
 import { requireStaff } from "@/lib/session";
@@ -31,7 +31,7 @@ export default async function MarketingOverview({ searchParams }: { searchParams
         eyebrow={<span className="inline-flex items-center gap-1.5"><WhatsappLogo size={14} weight="fill" className="text-[#25d366]" /> WhatsApp marketing</span>}
         title="Mission control"
         subtitle="Every campaign, reply and sign-up as it happens."
-        actions={<div className="flex flex-wrap gap-2"><WhatsAppTourButton /><ButtonLink href="/marketing/live" variant="secondary" size="sm"><Broadcast size={16} /> Live wall</ButtonLink><ButtonLink href="/marketing/campaigns" size="sm"><PaperPlaneTilt size={16} /> New campaign</ButtonLink></div>}
+        actions={<div className="flex flex-wrap gap-2"><TourLauncher from="/marketing" /><ButtonLink href="/marketing/live" variant="secondary" size="sm"><Broadcast size={16} /> Live wall</ButtonLink><ButtonLink href="/marketing/campaigns" size="sm"><PaperPlaneTilt size={16} /> New campaign</ButtonLink></div>}
       />
       <MarketingTabs active="/marketing" badge={d.waiting} />
       {params.demo === "loaded" ? <Notice tone="positive">Demo loaded: 180 sample contacts, 8 weeks of campaign history and demo mode switched on. Start a campaign and watch it play out here.</Notice> : null}

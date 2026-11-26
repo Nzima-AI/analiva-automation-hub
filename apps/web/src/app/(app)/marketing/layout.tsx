@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
-import { WhatsAppTour } from "@/components/tour/whatsapp-tour";
 import { marketingSettings } from "@/lib/marketing/engine";
 import { requireStaff } from "@/lib/session";
 
-/** Marketing pages share the spotlight tour and the demo-mode banner. */
+/** Marketing pages share the demo-mode banner. */
 export default async function MarketingLayout({ children }: { children: ReactNode }) {
   const { db } = await requireStaff();
   const settings = await marketingSettings(db);
@@ -15,7 +14,6 @@ export default async function MarketingLayout({ children }: { children: ReactNod
         </p>
       )}
       {children}
-      <WhatsAppTour />
     </>
   );
 }
